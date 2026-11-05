@@ -23,6 +23,13 @@ struct StripView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .coordinateSpace(name: "strip")
+        .onPreferenceChange(TileFrameKey.self) { [model] frames in
+            MainActor.assumeIsolated { model.tileFrames = frames }
+        }
+        .onPreferenceChange(NewSlotFrameKey.self) { [model] f in
+            MainActor.assumeIsolated { model.newSlotFrame = f }
+        }
         .animation(.spring(response: 0.42, dampingFraction: 0.86), value: groups.map(\.id))
     }
 
@@ -37,6 +44,9 @@ struct StripView: View {
                     GroupTile(group: g, number: index, edge: model.edge, controller: controller, model: model)
                 }
             }
+            .background(GeometryReader { geo in
+                Color.clear.preference(key: TileFrameKey.self, value: [g.id: geo.frame(in: .named("strip"))])
+            })
             .transition(.scale(scale: 0.8).combined(with: .opacity))
         }
         NewGroupSlot(model: model)
@@ -201,11 +211,15 @@ struct NumberBadge: View {
 struct NewGroupSlot: View {
     @ObservedObject var model: StripModel
     var body: some View {
-        if model.dropTarget != nil || model.dropOnNew {
+        if model.dragging {
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(model.dropOnNew ? Theme.spot : Theme.ink3, style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
                 .frame(width: 150, height: 60)
                 .overlay(Text("+ New group").font(.system(size: 12, weight: .semibold)).foregroundStyle(model.dropOnNew ? Theme.spot : Theme.ink2))
+                .background(Theme.glass.clipShape(RoundedRectangle(cornerRadius: 10)))
+                .background(GeometryReader { geo in
+                    Color.clear.preference(key: NewSlotFrameKey.self, value: geo.frame(in: .named("strip")))
+                })
         }
     }
 }
@@ -237,5 +251,19 @@ enum GroupColorNames {
     static func name(_ hex: String) -> String {
         ["#ef6f2e": "Stage orange", "#3b63e0": "Blue", "#f2b33d": "Amber", "#e0503d": "Red",
          "#8a5cd6": "Violet", "#d6457f": "Pink", "#2f8fd8": "Sky", "#b9bcc7": "Slate"][hex] ?? hex
+    }
+}
+
+struct TileFrameKey: PreferenceKey {
+    static let defaultValue: [UUID: CGRect] = [:]
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
+    }
+}
+
+struct NewSlotFrameKey: PreferenceKey {
+    static let defaultValue: CGRect? = nil
+    static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
+        value = nextValue() ?? value
     }
 }

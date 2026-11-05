@@ -58,6 +58,9 @@ final class StripManager {
         tokens.removeAll()
     }
 
+    /// The panel's frame in AppKit screen coordinates.
+    var panelFrame: CGRect? { panel?.frame }
+
     func setVisible(_ visible: Bool) {
         if visible { panel?.orderFrontRegardless() } else { panel?.orderOut(nil) }
     }
@@ -105,4 +108,9 @@ final class StripModel: ObservableObject {
     /// Group currently highlighted as a drop target (SO-022).
     @Published var dropTarget: UUID?
     @Published var dropOnNew = false
+    /// A window drag is in progress (shows the "+ New group" slot).
+    @Published var dragging = false
+    /// Tile frames in panel-local, top-left coordinates, for drop hit-testing.
+    var tileFrames: [UUID: CGRect] = [:]
+    var newSlotFrame: CGRect?
 }
