@@ -19,21 +19,17 @@ public enum LaneGuard {
         var target = frame
         target.size.width = max(min(frame.width, usable.width), minSize.width)
         target.size.height = max(min(frame.height, usable.height), minSize.height)
-        target = target.clamped(to: usable)
-        // If minSize forces the window to stay wider than the usable area, keep it hugging the far side.
-        if target.width > usable.width {
-            switch layout.stripEdge {
-            case .left: target.origin.x = usable.minX
-            case .right: target.origin.x = usable.maxX - target.width
-            default: break
-            }
+        // Shift inside the usable area on each axis that fits.
+        if target.width <= usable.width {
+            target.origin.x = min(max(target.minX, usable.minX), usable.maxX - target.width)
+        } else {
+            // minSize keeps it wider than the usable area: hug the side away from the strip.
+            target.origin.x = layout.stripEdge == .right ? usable.maxX - target.width : usable.minX
         }
-        if target.height > usable.height {
-            switch layout.stripEdge {
-            case .top: target.origin.y = usable.minY
-            case .bottom: target.origin.y = usable.maxY - target.height
-            default: break
-            }
+        if target.height <= usable.height {
+            target.origin.y = min(max(target.minY, usable.minY), usable.maxY - target.height)
+        } else {
+            target.origin.y = layout.stripEdge == .bottom ? usable.maxY - target.height : usable.minY
         }
         target = target.rounded()
         return target == frame.rounded() ? nil : target
