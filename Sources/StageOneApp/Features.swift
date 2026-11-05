@@ -17,6 +17,7 @@ enum Features {
         SceneRelaunch.install()
         SceneEdited.install()
         CommandServer.shared.start()
+        URLHandler.shared.install()
         LaneGuardService.shared.sweep(animated: false)
     }
 
