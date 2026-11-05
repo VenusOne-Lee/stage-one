@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 /// Design tokens from the prototype. Light mode only; no greens anywhere.
+@MainActor
 enum Theme {
     static let spot = Color(hex: 0xef6f2e)
     static let spotSoft = Color(hex: 0xfde3d2)
@@ -38,6 +39,7 @@ extension Color {
 }
 
 /// The Stage One mark: an orange ring with a dot.
+@MainActor
 enum Mark {
     static func image(size: CGFloat, color: NSColor = Theme.nsSpot) -> NSImage {
         let img = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
