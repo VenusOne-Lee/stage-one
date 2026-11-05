@@ -16,6 +16,7 @@ enum Features {
         SessionAutosave.install()
         SceneRelaunch.install()
         SceneEdited.install()
+        CommandServer.shared.start()
         LaneGuardService.shared.sweep(animated: false)
     }
 
@@ -27,5 +28,6 @@ enum Features {
         LayoutService.uninstall()
         SnapService.shared.uninstall()
         SaveSceneHotKey.uninstall()
+        CommandServer.shared.stop()
     }
 }
