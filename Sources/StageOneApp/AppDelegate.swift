@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = item
         StageController.shared.start()
         StripManager.shared.start()
+        UpdateChecker.shared.start()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
