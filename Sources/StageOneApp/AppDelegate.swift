@@ -6,6 +6,8 @@ import WindowKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         CrashSafety.install()
+        Panels.shared.handlers[.saveScene] = { SaveSceneHotKey.showSaveBox() }
+        Panels.shared.handlers[.scenes] = { ScenesPanel.show() }
         MenuBarController.shared.install()
         // "· edited" is tracked by SceneEdited (SO-053), which compares the desk with the scene.
 
