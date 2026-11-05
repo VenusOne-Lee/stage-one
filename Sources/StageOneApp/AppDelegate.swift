@@ -4,20 +4,13 @@ import WindowKit
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var statusItem: NSStatusItem?
-
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = Mark.image(size: 18)
-        item.button?.toolTip = "Stage One"
-        let menu = NSMenu()
-        let welcome = NSMenuItem(title: "Welcome to Stage One…", action: #selector(showOnboarding(_:)), keyEquivalent: "")
-        welcome.target = self
-        menu.addItem(welcome)
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit Stage One", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        item.menu = menu
-        statusItem = item
+        MenuBarController.shared.install()
+        // Any desk change after a scene is on stage marks it edited; saving or restoring a scene clears it.
+        StageController.shared.onDeskChange.append {
+            let prefs = Preferences.shared
+            if prefs.currentScene != nil, !prefs.sceneEdited { prefs.sceneEdited = true }
+        }
 
         // The engine only runs once Accessibility is trusted. Until then the walkthrough explains why.
         Engine.startIfReady()
@@ -32,10 +25,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         StageController.shared.stop()
     }
-
-    @objc private func showOnboarding(_ sender: Any?) {
-        OnboardingWindow.shared.show()
-    }
 }
 
 /// Starts the window engine and the strip once Accessibility is trusted.
@@ -48,6 +37,23 @@ enum Engine {
         guard Permissions.accessibility, !Preferences.shared.paused else { return }
         if !StageController.shared.isRunning { StageController.shared.start() }
         StripManager.shared.start()
+    }
+
+    /// Pause Stage One: puts every window back and hides the strip until resumed.
+    static func pause() {
+        Preferences.shared.paused = true
+        StageController.shared.stop()
+        StripManager.shared.stop()
+    }
+
+    /// Resume after a pause. Without Accessibility, reopens the walkthrough at that step.
+    static func resume() {
+        Preferences.shared.paused = false
+        startIfReady()
+        if !Permissions.accessibility {
+            OnboardingWindow.shared.show(from: .accessibility)
+            watchForAccessibility()
+        }
     }
 
     /// Polls once a second until Accessibility is granted, then starts the engine. No relaunch needed.
