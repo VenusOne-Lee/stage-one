@@ -13,6 +13,7 @@ enum Features {
         LayoutService.install()
         SnapService.shared.install()
         SaveSceneHotKey.install()
+        SessionAutosave.install()
         LaneGuardService.shared.sweep(animated: false)
     }
 
