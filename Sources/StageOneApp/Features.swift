@@ -10,6 +10,7 @@ enum Features {
         StripPlacement.shared.install()
         LaneGuardService.shared.install()
         ReflowService.install()
+        LayoutService.install()
         LaneGuardService.shared.sweep(animated: false)
     }
 
@@ -18,5 +19,6 @@ enum Features {
         DragToGroup.shared.uninstall()
         StripPlacement.shared.uninstall()
         LaneGuardService.shared.uninstall()
+        LayoutService.uninstall()
     }
 }
