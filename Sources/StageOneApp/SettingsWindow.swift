@@ -469,7 +469,7 @@ private struct IntegrationsPane: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             StageCard {
-                IntegrationRow(title: "Command line", detail: "The `stage` tool lists groups, restores scenes and arranges windows from Terminal.")
+                CommandLineRow()
                 Divider().opacity(0.5)
                 IntegrationRow(title: "Alfred", detail: "A workflow with the keyword st for scenes, groups and layouts.")
                 Divider().opacity(0.5)
@@ -478,6 +478,27 @@ private struct IntegrationsPane: View {
                 IntegrationRow(title: "Spotlight and Shortcuts", detail: "Every scene, group and layout as an App Intent.")
             }
             Note(text: "Installers for these arrive in upcoming versions.")
+        }
+    }
+}
+
+/// SO-100: links the bundled `stage` tool into /usr/local/bin.
+private struct CommandLineRow: View {
+    @State private var installed = CLIInstaller.isInstalled
+
+    var body: some View {
+        SettingRow(title: "Command line", detail: "The `stage` tool lists groups, restores scenes and arranges windows from Terminal.") {
+            if installed {
+                Text("Installed")
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(Theme.spot)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Theme.spotSoft))
+            } else {
+                Button("Install") { installed = CLIInstaller.install() }
+                    .buttonStyle(StageButtonStyle(kind: .spot))
+            }
         }
     }
 }

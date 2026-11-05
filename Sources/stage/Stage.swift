@@ -9,8 +9,19 @@ struct Stage: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "stage",
         abstract: "Control Stage One from the command line.",
+        discussion: """
+        Examples:
+          stage list
+          stage save "Deep work"
+          stage restore deep
+          stage group 2
+          stage layout halves
+          stage export "Deep work" ~/Desktop
+        """,
         version: "0.1.0",
         subcommands: [
+            List.self, Status.self, Save.self, Restore.self, GroupCommand.self, Layout.self,
+            Rewind.self, Export.self, Import.self, Pause.self, Resume.self,
             Watchdog.self,  // hidden: launched by the app (SO-131)
         ]
     )
