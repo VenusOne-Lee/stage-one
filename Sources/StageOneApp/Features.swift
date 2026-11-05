@@ -15,6 +15,7 @@ enum Features {
         SaveSceneHotKey.install()
         SessionAutosave.install()
         SceneRelaunch.install()
+        SceneEdited.install()
         LaneGuardService.shared.sweep(animated: false)
     }
 
