@@ -19,6 +19,8 @@ final class Preferences: ObservableObject {
     @Published var currentScene: String? { didSet { d.set(currentScene, forKey: "currentScene") } }
     /// Hotkey modifier for group switching (⌥ by default).
     @Published var groupHotkeysEnabled: Bool { didSet { d.set(groupHotkeysEnabled, forKey: "groupHotkeysEnabled") } }
+    /// The desk differs from the current scene (shown as "· edited"). Not persisted.
+    @Published var sceneEdited = false
     /// Persisted desk (groups), so groups survive a relaunch.
     var savedDesk: Data? {
         get { d.data(forKey: "desk") }
