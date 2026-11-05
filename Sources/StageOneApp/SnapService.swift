@@ -60,7 +60,7 @@ final class SnapService {
 
     private func release() {
         defer { dragging = nil; zone = nil; hideGhost() }
-        guard let id = dragging, let (_, frame) = zone, !DragToGroup.shared.isHoveringStrip,
+        guard let id = dragging, let frame = zone?.1, !DragToGroup.shared.isHoveringStrip,
               let w = StageController.shared.inventory[id] else { return }
         // Let the app finish its own drag first.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
