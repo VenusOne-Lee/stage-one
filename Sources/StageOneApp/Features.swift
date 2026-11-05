@@ -12,6 +12,7 @@ enum Features {
         ReflowService.install()
         LayoutService.install()
         SnapService.shared.install()
+        SaveSceneHotKey.install()
         LaneGuardService.shared.sweep(animated: false)
     }
 
@@ -22,5 +23,6 @@ enum Features {
         LaneGuardService.shared.uninstall()
         LayoutService.uninstall()
         SnapService.shared.uninstall()
+        SaveSceneHotKey.uninstall()
     }
 }
