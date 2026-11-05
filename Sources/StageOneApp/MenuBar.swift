@@ -89,9 +89,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func settings() { MenuBarController.openSettings() }
 
-    /// Opens Settings. Replaced by the real Settings window in SO-132.
     static func openSettings() {
-        OnboardingWindow.shared.show()
+        SettingsWindow.shared.show(tab: .general)
     }
 
     @objc private func togglePause() {
