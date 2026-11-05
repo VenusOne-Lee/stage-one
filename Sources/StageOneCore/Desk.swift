@@ -36,7 +36,7 @@ public enum GroupColor {
     }
 }
 
-public struct WindowGroup: Codable, Sendable, Identifiable, Equatable {
+public struct StageGroup: Codable, Sendable, Identifiable, Equatable {
     public var id: UUID
     public var name: String
     public var color: String
@@ -58,33 +58,33 @@ public struct WindowGroup: Codable, Sendable, Identifiable, Equatable {
 
 /// Groups plus which one is on stage. Pure value type; the app owns one and mutates it.
 public struct Desk: Codable, Sendable, Equatable {
-    public var groups: [WindowGroup]
+    public var groups: [StageGroup]
     public var activeID: UUID?
 
-    public init(groups: [WindowGroup] = [], activeID: UUID? = nil) {
+    public init(groups: [StageGroup] = [], activeID: UUID? = nil) {
         self.groups = groups
         self.activeID = activeID ?? groups.first?.id
     }
 
-    public var active: WindowGroup? { groups.first { $0.id == activeID } }
+    public var active: StageGroup? { groups.first { $0.id == activeID } }
     public var activeIndex: Int? { groups.firstIndex { $0.id == activeID } }
     /// Groups shown in the strip: everything except the one on stage.
-    public var stripGroups: [WindowGroup] { groups.filter { $0.id != activeID } }
+    public var stripGroups: [StageGroup] { groups.filter { $0.id != activeID } }
 
-    public func group(containing windowID: UInt32) -> WindowGroup? {
+    public func group(containing windowID: UInt32) -> StageGroup? {
         groups.first { $0.windowIDs.contains(windowID) }
     }
 
-    public func group(named query: String) -> WindowGroup? {
+    public func group(named query: String) -> StageGroup? {
         if let n = Int(query), n >= 1, n <= groups.count { return groups[n - 1] }
         let q = query.lowercased()
         return groups.first { $0.name.lowercased() == q } ?? groups.first { $0.name.lowercased().hasPrefix(q) }
     }
 
     @discardableResult
-    public mutating func addGroup(named name: String, windowIDs: [UInt32] = []) -> WindowGroup {
+    public mutating func addGroup(named name: String, windowIDs: [UInt32] = []) -> StageGroup {
         for i in groups.indices { groups[i].windowIDs.removeAll { windowIDs.contains($0) } }
-        let g = WindowGroup(name: name, color: GroupColor.next(after: groups.map(\.color)), windowIDs: windowIDs)
+        let g = StageGroup(name: name, color: GroupColor.next(after: groups.map(\.color)), windowIDs: windowIDs)
         groups.append(g)
         if activeID == nil { activeID = g.id }
         return g
