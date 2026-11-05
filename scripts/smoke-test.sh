@@ -11,6 +11,14 @@ test -d "$APP/Contents/Frameworks/Sparkle.framework"
 otool -L "$APP/Contents/MacOS/StageOne" | grep -q "@rpath/Sparkle.framework"
 "$APP/Contents/Helpers/stage" --help >/dev/null
 
+# SO-131: the watchdog returns at once for a dead pid and removes an empty parked file.
+WD="$(mktemp -d)"
+echo "[]" > "$WD/parked.json"
+sleep 0 & DEAD=$!; wait "$DEAD" || true
+"$APP/Contents/Helpers/stage" watchdog --pid "$DEAD" --file "$WD/parked.json"
+test ! -e "$WD/parked.json"
+rm -rf "$WD"
+
 "$APP/Contents/MacOS/StageOne" > /tmp/stageone-smoke.log 2>&1 &
 PID=$!
 sleep 6
