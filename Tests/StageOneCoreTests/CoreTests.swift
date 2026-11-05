@@ -225,6 +225,24 @@ final class CommandTests: XCTestCase {
         XCTAssertTrue(Command.restore(scene: "x").isDestructive)
     }
 
+    func testURLSchemeCoversEveryCommand() {
+        func c(_ s: String) -> Command? { Command(url: URL(string: s)!) }
+        XCTAssertEqual(c("stageone://list"), .list)
+        XCTAssertEqual(c("stageone://status"), .status)
+        XCTAssertEqual(c("stageone://save?name=Morning"), .save(name: "Morning"))
+        XCTAssertEqual(c("stageone://group?index=2"), .group("2"))
+        XCTAssertEqual(c("stageone://group?name=Mail"), .group("Mail"))
+        XCTAssertEqual(c("stageone://rewind"), .rewind(to: nil))
+        XCTAssertEqual(c("stageone://export?scene=Deep&path=/tmp/x.stagescene"), .export(scene: "Deep", path: "/tmp/x.stagescene", includeFiles: false))
+        XCTAssertEqual(c("stageone://import?path=/tmp/x.stagescene"), .importScene(path: "/tmp/x.stagescene"))
+        XCTAssertEqual(c("stageone://pause"), .pause(true))
+        XCTAssertEqual(c("stageone://resume"), .pause(false))
+        XCTAssertNil(c("stageone://restore"))
+        XCTAssertNil(c("stageone://launch-missiles"))
+        XCTAssertFalse(Command.list.isDestructive)
+        XCTAssertTrue(Command.export(scene: "a", path: "/b", includeFiles: false).isDestructive)
+    }
+
     func testFuzzy() {
         XCTAssertNotNil(Fuzzy.score("db", in: "Deep build"))
         XCTAssertNil(Fuzzy.score("zz", in: "Deep build"))

@@ -31,8 +31,12 @@ public enum Command: Codable, Sendable, Equatable {
         case "group": guard let g = q("group") ?? q("name") ?? q("index") else { return nil }; self = .group(g)
         case "layout": guard let k = (q("kind") ?? q("layout")).flatMap(LayoutKind.init(loose:)) else { return nil }; self = .layout(k)
         case "rewind": self = .rewind(to: q("to").flatMap { ISO8601DateFormatter().date(from: $0) })
+        case "export":
+            guard let s = q("scene") ?? q("name"), let p = q("path") ?? q("to") else { return nil }
+            self = .export(scene: s, path: p, includeFiles: q("files") == "true")
         case "import": guard let p = q("path") else { return nil }; self = .importScene(path: p)
         case "pause": self = .pause(q("on") != "false")
+        case "resume": self = .pause(false)
         default: return nil
         }
     }
@@ -40,7 +44,7 @@ public enum Command: Codable, Sendable, Equatable {
     /// Commands that change the desk and need a confirmation when they come from a URL.
     public var isDestructive: Bool {
         switch self {
-        case .restore, .rewind, .importScene: return true
+        case .restore, .rewind, .importScene, .export: return true
         default: return false
         }
     }
