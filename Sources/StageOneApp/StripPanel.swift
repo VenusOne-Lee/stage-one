@@ -101,7 +101,7 @@ enum ScreenLayouts {
 
 @MainActor
 final class StripModel: ObservableObject {
-    @Published var edge: Edge = .left
+    @Published var edge: ScreenEdge = .left
     @Published var size: StripSize = .full
     /// Shows ⌥ number badges while Option is held (SO-021).
     @Published var showNumbers = false
