@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 /// All frames in Stage One use the global "top-left" coordinate space that the
 /// Accessibility API and CGWindowList use: origin at the top-left of the main
