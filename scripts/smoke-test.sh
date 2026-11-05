@@ -8,7 +8,8 @@ APP="${1:-dist/Stage One.app}"
 
 test -f "$APP/Contents/Resources/AppIcon.icns"
 test -d "$APP/Contents/Frameworks/Sparkle.framework"
-otool -L "$APP/Contents/MacOS/StageOne" | grep -q "@rpath/Sparkle.framework"
+LINKS="$(otool -L "$APP/Contents/MacOS/StageOne")"
+grep -q "@rpath/Sparkle.framework" <<< "$LINKS"
 "$APP/Contents/Helpers/stage" --help >/dev/null
 
 "$APP/Contents/MacOS/StageOne" > /tmp/stageone-smoke.log 2>&1 &

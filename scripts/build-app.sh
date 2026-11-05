@@ -52,7 +52,8 @@ if [ -z "$SPARKLE_FW" ]; then
 fi
 echo "Bundling $SPARKLE_FW"
 ditto "$SPARKLE_FW" "$APP/Contents/Frameworks/Sparkle.framework"
-if ! otool -l "$APP/Contents/MacOS/StageOne" | grep -q "@executable_path/../Frameworks"; then
+RPATHS="$(otool -l "$APP/Contents/MacOS/StageOne")"
+if ! grep -q "@executable_path/../Frameworks" <<< "$RPATHS"; then
     install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/StageOne"
 fi
 
