@@ -1,7 +1,7 @@
 import Foundation
 
 /// A window as the core sees it: everything needed to save, match and place it.
-public struct WindowSnapshot: Codable, Sendable, Hashable {
+public struct WindowSnapshot: Codable, Sendable, Equatable {
     /// Runtime id (CGWindowID). Not stable across launches; never matched on its own.
     public var windowID: UInt32
     public var pid: Int32
