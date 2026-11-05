@@ -55,7 +55,7 @@ public final class WindowMover {
     /// Animated frame change: interpolated setFrame calls at 60fps over `duration`
     /// with the prototype's cubic-bezier(.2,.8,.2,1) ease. Jumps for slow apps or Reduce Motion.
     public func animate(_ window: TrackedWindow, to rect: CGRect, duration: TimeInterval = 0.42,
-                        delay: TimeInterval = 0, completion: (@MainActor (CGRect) -> Void)? = nil) {
+                        delay: TimeInterval = 0, completion: (@MainActor @Sendable (CGRect) -> Void)? = nil) {
         cancelAnimation(window.id)
         let from = window.liveFrame() ?? window.frame
         if reduceMotion || slowApps.contains(window.pid) || duration <= 0 || from == rect {
