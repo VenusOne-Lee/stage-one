@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 /// Every action the app can take from outside: the `stage` CLI, `stageone://` URLs,
 /// App Intents, Alfred and the MCP server all go through this one bus.

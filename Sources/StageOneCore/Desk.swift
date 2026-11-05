@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 /// A window as the core sees it: everything needed to save, match and place it.
 public struct WindowSnapshot: Codable, Sendable, Equatable {

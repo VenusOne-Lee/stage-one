@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 /// The `.stagescene` file format, version 1 (see docs/BACKLOG.md, "Data model").
 public struct StageScene: Codable, Sendable, Equatable, Identifiable {

@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 /// Per-stage layouts (SO-040).
 public enum LayoutKind: String, Codable, Sendable, CaseIterable {
