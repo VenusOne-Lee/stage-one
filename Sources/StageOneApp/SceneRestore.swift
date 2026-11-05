@@ -28,8 +28,8 @@ enum SceneRestore {
         let outcome = apply(scene)
         if !quiet {
             let detail = outcome.missing.isEmpty ? nil : "\(outcome.missing.count) window\(outcome.missing.count == 1 ? "" : "s") not open yet"
-            Toast.shared.show("Restored “\(scene.name)”", detail: detail,
-                              action: undoable ? (title: "Undo", run: { SceneRestore.undo() }) : nil, duration: undoable ? 30 : 4)
+            let undo: (title: String, run: () -> Void)? = undoable ? (title: "Undo", run: { SceneRestore.undo() }) : nil
+            Toast.shared.show("Restored “\(scene.name)”", detail: detail, action: undo, duration: undoable ? 30 : 4)
         }
         if !scene.name.hasPrefix("Before restoring") {
             Preferences.shared.currentScene = scene.name
@@ -51,7 +51,7 @@ enum SceneRestore {
     @discardableResult
     static func apply(_ scene: StageScene) -> Outcome {
         let c = StageController.shared
-        let flat: [(group: Int, window: StageScene.Window)] = scene.groups.enumerated().flatMap { gi, g in g.windows.map { (gi, $0) } }
+        let flat: [(group: Int, window: StageScene.Window)] = scene.groups.enumerated().flatMap { gi, g in g.windows.map { (group: gi, window: $0) } }
         let live = c.inventory.windows.map(\.snapshot)
         let result = IdentityMatcher.match(saved: flat.map(\.window), live: live)
 
@@ -72,7 +72,6 @@ enum SceneRestore {
         if !result.unmatchedLive.isEmpty {
             desk.groups.append(StageGroup(name: "Other", color: GroupColor.palette.last ?? "#b9bcc7", windowIDs: result.unmatchedLive))
         }
-        desk.groups.removeAll { $0.windowIDs.isEmpty && !scene.groups.contains(where: { $0.name == $0.name }) }
         let activeIndex = min(max(0, scene.active), max(0, desk.groups.count - 1))
         desk.activeID = desk.groups.indices.contains(activeIndex) ? desk.groups[activeIndex].id : desk.groups.first?.id
 
@@ -119,8 +118,11 @@ enum SceneRestore {
 enum SessionAutosave {
     static var file: URL { IPC.supportDirectory.appendingPathComponent("last-session.stagescene") }
     private static var pending: DispatchWorkItem?
+    private static var installed = false
 
     static func install() {
+        guard !installed else { return }
+        installed = true
         StageController.shared.onDeskChange.append { SessionAutosave.schedule() }
     }
 
