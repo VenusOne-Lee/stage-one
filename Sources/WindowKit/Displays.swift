@@ -47,8 +47,8 @@ public enum Displays {
     }
 
     /// Which edge the Dock is on, read from the Dock's preferences.
-    public static var dockEdge: Edge {
+    public static var dockEdge: ScreenEdge {
         let o = UserDefaults(suiteName: "com.apple.dock")?.string(forKey: "orientation") ?? "bottom"
-        return Edge(rawValue: o) ?? .bottom
+        return ScreenEdge(rawValue: o) ?? .bottom
     }
 }

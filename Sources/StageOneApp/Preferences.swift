@@ -7,7 +7,7 @@ final class Preferences: ObservableObject {
     static let shared = Preferences()
     private let d = UserDefaults.standard
 
-    @Published var stripEdge: Edge { didSet { d.set(stripEdge.rawValue, forKey: "stripEdge") } }
+    @Published var stripEdge: ScreenEdge { didSet { d.set(stripEdge.rawValue, forKey: "stripEdge") } }
     @Published var overlapMode: OverlapMode { didSet { d.set(overlapMode.rawValue, forKey: "overlapMode") } }
     @Published var stripSize: StripSize { didSet { d.set(stripSize.rawValue, forKey: "stripSize") } }
     /// Show thumbnails (needs Screen Recording) or app icon tiles.
@@ -28,7 +28,7 @@ final class Preferences: ObservableObject {
     }
 
     private init() {
-        stripEdge = Edge(rawValue: d.string(forKey: "stripEdge") ?? "") ?? .left
+        stripEdge = ScreenEdge(rawValue: d.string(forKey: "stripEdge") ?? "") ?? .left
         overlapMode = OverlapMode(rawValue: d.string(forKey: "overlapMode") ?? "") ?? .reserve
         stripSize = StripSize(rawValue: d.string(forKey: "stripSize") ?? "") ?? .full
         livePreviews = d.object(forKey: "livePreviews") as? Bool ?? true

@@ -33,13 +33,13 @@ public struct ScreenLayout: Codable, Sendable, Equatable {
     public var frame: CGRect
     /// Display frame minus menu bar and Dock.
     public var visibleFrame: CGRect
-    public var stripEdge: Edge
-    public var dockEdge: Edge
+    public var stripEdge: ScreenEdge
+    public var dockEdge: ScreenEdge
     public var mode: OverlapMode
     public var size: StripSize
 
     public init(displayID: String, frame: CGRect, visibleFrame: CGRect,
-                stripEdge: Edge = .left, dockEdge: Edge = .bottom,
+                stripEdge: ScreenEdge = .left, dockEdge: ScreenEdge = .bottom,
                 mode: OverlapMode = .reserve, size: StripSize = .full) {
         self.displayID = displayID
         self.frame = frame
