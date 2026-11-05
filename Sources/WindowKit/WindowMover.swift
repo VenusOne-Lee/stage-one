@@ -66,9 +66,11 @@ public final class WindowMover {
         let target = constrained(rect, for: window)
         let begin = CFAbsoluteTimeGetCurrent() + delay
         let sizeChanges = abs(from.width - target.width) > 1 || abs(from.height - target.height) > 1
-        let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self, weak window] t in
+        let id = window.id
+        let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self, weak window] _ in
             MainActor.assumeIsolated {
-                guard let self, let window else { t.invalidate(); return }
+                guard let self else { return }
+                guard let window else { self.cancelAnimation(id); return }
                 let now = CFAbsoluteTimeGetCurrent()
                 if now < begin { return }
                 let p = min(1, (now - begin) / duration)
@@ -83,14 +85,12 @@ public final class WindowMover {
                 if CFAbsoluteTimeGetCurrent() - stepStart > 0.05 {
                     // App can't keep up: finish with a jump.
                     self.slowApps.insert(window.pid)
-                    t.invalidate()
-                    self.animations[window.id] = nil
+                    self.cancelAnimation(id)
                     completion?(self.setFrame(window, target))
                     return
                 }
                 if p >= 1 {
-                    t.invalidate()
-                    self.animations[window.id] = nil
+                    self.cancelAnimation(id)
                     completion?(self.setFrame(window, target))
                 }
             }
