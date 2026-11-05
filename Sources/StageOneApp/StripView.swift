@@ -100,6 +100,11 @@ struct GroupTile: View {
             if NSEvent.modifierFlags.contains(.option) { controller.addToStage(group.id) } else { controller.switchTo(group.id) }
         }
         .contextMenu { GroupMenu(group: group, controller: controller, rename: { draft = group.name; renaming = true }) }
+        .onDrag {
+            model.reordering = group.id
+            return NSItemProvider(object: group.id.uuidString as NSString)
+        }
+        .onDrop(of: [.text], delegate: ReorderDrop(target: group.id, model: model, controller: controller))
         .help(group.name)
     }
 
@@ -242,8 +247,40 @@ struct GroupMenu: View {
                 }
             }
         }
+        if NSScreen.screens.count > 1 {
+            Menu("Move to display") {
+                ForEach(Array(NSScreen.screens.enumerated()), id: \.offset) { i, screen in
+                    Button(screen.localizedName) { controller.moveGroup(group.id, toDisplay: Displays.stableID(of: screen)) }
+                }
+            }
+        }
         Divider()
         Button("Close group") { controller.closeGroup(group.id) }
+    }
+}
+
+/// Drag a group onto another to reorder the strip (SO-023).
+struct ReorderDrop: DropDelegate {
+    let target: UUID
+    let model: StripModel
+    let controller: StageController
+
+    func validateDrop(info: DropInfo) -> Bool { model.reordering != nil }
+
+    func dropEntered(info: DropInfo) {
+        guard let moving = model.reordering, moving != target,
+              let from = controller.desk.groups.firstIndex(where: { $0.id == moving }),
+              let to = controller.desk.groups.firstIndex(where: { $0.id == target }) else { return }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            controller.reorder(from: from, to: to)
+        }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+
+    func performDrop(info: DropInfo) -> Bool {
+        model.reordering = nil
+        return true
     }
 }
 

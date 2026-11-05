@@ -113,4 +113,6 @@ final class StripModel: ObservableObject {
     /// Tile frames in panel-local, top-left coordinates, for drop hit-testing.
     var tileFrames: [UUID: CGRect] = [:]
     var newSlotFrame: CGRect?
+    /// Group being dragged to reorder the strip.
+    var reordering: UUID?
 }
