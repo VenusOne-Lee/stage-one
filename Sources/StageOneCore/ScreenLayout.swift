@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 /// How windows treat the strip's lane.
 public enum OverlapMode: String, Codable, Sendable, CaseIterable {

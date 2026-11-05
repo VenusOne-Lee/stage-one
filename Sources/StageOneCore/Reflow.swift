@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 /// Proportional remapping between usable areas (SO-035).
 public enum Reflow {

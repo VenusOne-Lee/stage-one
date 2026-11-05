@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 /// Keeps windows out of the strip's lane (SO-031).
 public enum LaneGuard {
