@@ -49,10 +49,12 @@ final class StageController: ObservableObject {
         }
         thumbTimer?.tolerance = 0.5
         captureAll()
+        Features.start()
     }
 
     /// Puts every window back where the user can see it (Quit and Pause).
     func stop() {
+        Features.stop()
         thumbTimer?.invalidate()
         parking.unparkAll(in: inventory)
         inventory.stop()

@@ -37,7 +37,7 @@ final class StripPanel: NSPanel {
 final class StripManager {
     static let shared = StripManager()
     private var panel: StripPanel?
-    private let model = StripModel()
+    let model = StripModel()
     private var tokens: [NSObjectProtocol] = []
 
     func start() {
