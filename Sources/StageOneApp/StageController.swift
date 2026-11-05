@@ -309,6 +309,7 @@ final class StageController: ObservableObject {
     }
 
     private func captureOnStage() {
+        guard started, !prefs.paused else { return }  // SO-130: no refresh while paused
         capture(desk.active?.windowIDs ?? [])
     }
 

@@ -22,6 +22,7 @@ struct Stage: ParsableCommand {
         subcommands: [
             List.self, Status.self, Save.self, Restore.self, GroupCommand.self, Layout.self,
             Rewind.self, Export.self, Import.self, Pause.self, Resume.self,
+            Watchdog.self,  // hidden: launched by the app (SO-131)
         ]
     )
 }
