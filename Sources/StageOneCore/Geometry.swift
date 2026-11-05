@@ -6,7 +6,7 @@ import CoreGraphics
 /// All frames in Stage One use the global "top-left" coordinate space that the
 /// Accessibility API and CGWindowList use: origin at the top-left of the main
 /// display, y grows downward.
-public enum Edge: String, Codable, Sendable, CaseIterable {
+public enum ScreenEdge: String, Codable, Sendable, CaseIterable {
     case left, right, top, bottom
 
     public var isVertical: Bool { self == .left || self == .right }
