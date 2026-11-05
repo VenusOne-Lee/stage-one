@@ -9,6 +9,15 @@ enum OnboardingStep: Int, CaseIterable, Sendable {
     case accessibility
     case screenRecording
     case stageManager
+    case importWindows
+}
+
+/// SO-003: how the first desk is built from the windows already open.
+enum ImportChoice: Sendable {
+    /// One group per app (at most 8), named after the app.
+    case byApp
+    /// Everything in one group.
+    case fresh
 }
 
 /// Live state for the walkthrough. Polls permissions once a second so the
@@ -22,10 +31,16 @@ final class OnboardingModel: ObservableObject {
     @Published private(set) var stageManagerOn = AppleStageManager.isOn
     @Published var stageManagerError = false
 
+    @Published var importChoice: ImportChoice = .byApp
+    /// The import step only appears on the first run, so running setup again never replaces your groups.
+    let firstRun = !Preferences.shared.onboardingDone
+
     var onFinish: () -> Void = {}
     private var timer: Timer?
 
-    var steps: [OnboardingStep] { OnboardingStep.allCases }
+    var steps: [OnboardingStep] {
+        firstRun ? OnboardingStep.allCases : OnboardingStep.allCases.filter { $0 != .importWindows }
+    }
     var index: Int { steps.firstIndex(of: step) ?? 0 }
     var isLast: Bool { index == steps.count - 1 }
 
@@ -72,7 +87,11 @@ final class OnboardingModel: ObservableObject {
     }
 
     func next() {
-        if isLast { finish(); return }
+        if isLast {
+            if step == .importWindows { applyImport() }
+            finish()
+            return
+        }
         step = steps[index + 1]
         refresh()
     }
@@ -80,6 +99,17 @@ final class OnboardingModel: ObservableObject {
     func back() {
         guard index > 0 else { return }
         step = steps[index - 1]
+    }
+
+    /// Builds the first desk. Without Accessibility the controller is not running yet; it groups
+    /// windows by app on its own the first time it starts.
+    func applyImport() {
+        let controller = StageController.shared
+        guard controller.isRunning else { return }
+        switch importChoice {
+        case .byApp: controller.importWindowsByApp()
+        case .fresh: controller.importAsOneGroup()
+        }
     }
 
     func finish() {
@@ -109,7 +139,7 @@ final class OnboardingWindow: NSObject, NSWindowDelegate {
         if let start { m.step = start }
         m.onFinish = { [weak self] in self?.close() }
         m.startPolling()
-        let w = makeStageWindow(title: "Welcome to Stage One", size: NSSize(width: 620, height: 520),
+        let w = makeStageWindow(title: "Welcome to Stage One", size: NSSize(width: 620, height: 560),
                                 content: OnboardingView(model: m))
         w.delegate = self
         model = m
@@ -144,6 +174,7 @@ struct OnboardingView: View {
                 case .accessibility: AccessibilityStep(granted: model.accessibility)
                 case .screenRecording: ScreenRecordingStep(granted: model.screenRecording)
                 case .stageManager: StageManagerStep(model: model)
+                case .importWindows: ImportStep(model: model)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -154,7 +185,7 @@ struct OnboardingView: View {
         .padding(.horizontal, 36)
         .padding(.top, 40)
         .padding(.bottom, 28)
-        .frame(width: 620, height: 520)
+        .frame(width: 620, height: 560)
         .background(Color(hex: 0xfffdfb))
         .foregroundStyle(Theme.ink)
         .animation(.easeOut(duration: 0.18), value: model.step)
@@ -184,6 +215,7 @@ struct OnboardingView: View {
         case .welcome: return "Get started"
         case .screenRecording where !model.screenRecording: return model.isLast ? "Use app icons" : "Skip"
         case .stageManager where model.stageManagerOn: return model.isLast ? "Finish anyway" : "Skip"
+        case .importWindows: return model.importChoice == .byApp ? "Group my windows" : "Start fresh"
         default: return model.isLast ? "Done" : "Continue"
         }
     }
@@ -368,5 +400,87 @@ private struct StageManagerStep: View {
                 }
             }
         }
+    }
+}
+
+/// SO-003: build the first desk from the windows that are already open.
+private struct ImportStep: View {
+    @ObservedObject var model: OnboardingModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            StepHeader(title: "Set up your groups",
+                       lede: "Stage One can sort the windows you have open right now into groups. You can drag windows between groups, rename them and add more later.")
+            ChoiceCard(title: "Group by app (recommended)",
+                       detail: byAppDetail,
+                       selected: model.importChoice == .byApp) { model.importChoice = .byApp }
+            ChoiceCard(title: "Start fresh",
+                       detail: "Put every open window in one group and build your own groups as you go.",
+                       selected: model.importChoice == .fresh) { model.importChoice = .fresh }
+            if !StageController.shared.isRunning {
+                Text("Stage One will group your windows by app as soon as Accessibility is allowed.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.ink3)
+            }
+        }
+    }
+
+    /// The apps that would become groups, in front-to-back order.
+    private var byAppDetail: String {
+        var names: [String] = []
+        for w in StageController.shared.inventory.windows where !names.contains(w.snapshot.appName) {
+            names.append(w.snapshot.appName)
+        }
+        guard !names.isEmpty else { return "One group per app, up to 8, each named after its app." }
+        let shown = names.prefix(8).joined(separator: ", ")
+        let extra = names.count > 8 ? ", plus one more group for the other \(names.count - 8) apps" : ""
+        return "One group per app, named after it: \(shown)\(extra)."
+    }
+}
+
+private struct ChoiceCard: View {
+    let title: String
+    let detail: String
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(alignment: .top, spacing: 12) {
+                radio
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Theme.ink)
+                    Text(detail)
+                        .font(.system(size: 12.5))
+                        .foregroundStyle(Theme.ink2)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(card)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var radio: some View {
+        ZStack {
+            Circle().strokeBorder(selected ? Theme.spot : Theme.ink3, lineWidth: 1.5)
+            if selected { Circle().fill(Theme.spot).frame(width: 8, height: 8) }
+        }
+        .frame(width: 16, height: 16)
+        .padding(.top, 2)
+    }
+
+    private var card: some View {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        return shape
+            .fill(selected ? Theme.spotSoft.opacity(0.55) : Color.white.opacity(0.85))
+            .overlay(shape.strokeBorder(selected ? Theme.spot : Theme.line, lineWidth: selected ? 1.5 : 1))
     }
 }
