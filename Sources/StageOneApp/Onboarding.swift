@@ -8,6 +8,7 @@ enum OnboardingStep: Int, CaseIterable, Sendable {
     case welcome
     case accessibility
     case screenRecording
+    case stageManager
 }
 
 /// Live state for the walkthrough. Polls permissions once a second so the
@@ -17,6 +18,9 @@ final class OnboardingModel: ObservableObject {
     @Published var step: OnboardingStep = .welcome
     @Published private(set) var accessibility = Permissions.accessibility
     @Published private(set) var screenRecording = Permissions.screenRecording
+    /// SO-002: whether Apple's Stage Manager is on. Only re-read while its step is showing.
+    @Published private(set) var stageManagerOn = AppleStageManager.isOn
+    @Published var stageManagerError = false
 
     var onFinish: () -> Void = {}
     private var timer: Timer?
@@ -50,11 +54,27 @@ final class OnboardingModel: ObservableObject {
             screenRecording = sr
             if sr, StageController.shared.isRunning { StageController.shared.captureAll() }
         }
+        if step == .stageManager {
+            let on = AppleStageManager.isOn
+            if on != stageManagerOn { stageManagerOn = on }
+        }
+    }
+
+    /// "Turn it off for me".
+    func turnOffStageManager() {
+        if AppleStageManager.setEnabled(false) {
+            Preferences.shared.stageManagerTurnedOff = true
+            stageManagerError = false
+        } else {
+            stageManagerError = true
+        }
+        stageManagerOn = AppleStageManager.isOn
     }
 
     func next() {
         if isLast { finish(); return }
         step = steps[index + 1]
+        refresh()
     }
 
     func back() {
@@ -123,6 +143,7 @@ struct OnboardingView: View {
                 case .welcome: WelcomeStep()
                 case .accessibility: AccessibilityStep(granted: model.accessibility)
                 case .screenRecording: ScreenRecordingStep(granted: model.screenRecording)
+                case .stageManager: StageManagerStep(model: model)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -162,6 +183,7 @@ struct OnboardingView: View {
         switch model.step {
         case .welcome: return "Get started"
         case .screenRecording where !model.screenRecording: return model.isLast ? "Use app icons" : "Skip"
+        case .stageManager where model.stageManagerOn: return model.isLast ? "Finish anyway" : "Skip"
         default: return model.isLast ? "Done" : "Continue"
         }
     }
@@ -307,6 +329,44 @@ private struct ScreenRecordingStep: View {
             Text("You can switch previews off any time in Settings › Strip & Dock.")
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.ink3)
+        }
+    }
+}
+
+/// SO-002: Apple's Stage Manager has to be off, because both apps hide and move windows.
+private struct StageManagerStep: View {
+    @ObservedObject var model: OnboardingModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            StepHeader(title: "Turn off Stage Manager",
+                       lede: "Apple's Stage Manager and Stage One both hide, move and group windows. With both on, windows jump between them and the strip covers Apple's. Stage One does everything Stage Manager does, so it needs Stage Manager off.")
+            StageCard {
+                HStack {
+                    Text("Apple's Stage Manager").font(.system(size: 14, weight: .semibold))
+                    Spacer()
+                    PermissionPill(granted: !model.stageManagerOn, grantedText: "Off", missingText: "On")
+                }
+                Text(model.stageManagerOn
+                     ? "Turn it off here, or yourself in System Settings › Desktop & Dock › Stage Manager."
+                     : "Stage Manager is off. You can turn it back on any time in Stage One's Settings.")
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(Theme.ink2)
+                    .fixedSize(horizontal: false, vertical: true)
+                if model.stageManagerOn {
+                    HStack(spacing: 8) {
+                        Button("Turn it off for me") { model.turnOffStageManager() }
+                            .buttonStyle(StageButtonStyle(kind: .ink))
+                        Button("I'll do it") { AppleStageManager.openSettings() }
+                            .buttonStyle(StageButtonStyle(kind: .ghost))
+                    }
+                }
+                if model.stageManagerError {
+                    Text("That didn't work. Please turn it off in System Settings instead.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Theme.danger)
+                }
+            }
         }
     }
 }
