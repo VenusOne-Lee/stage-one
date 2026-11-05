@@ -19,6 +19,8 @@ final class Preferences: ObservableObject {
     @Published var currentScene: String? { didSet { d.set(currentScene, forKey: "currentScene") } }
     /// Hotkey modifier for group switching (⌥ by default).
     @Published var groupHotkeysEnabled: Bool { didSet { d.set(groupHotkeysEnabled, forKey: "groupHotkeysEnabled") } }
+    /// SO-002: Stage One turned Apple's Stage Manager off, so Settings can offer to turn it back on.
+    @Published var stageManagerTurnedOff: Bool { didSet { d.set(stageManagerTurnedOff, forKey: "stageManagerTurnedOff") } }
     /// The desk differs from the current scene (shown as "· edited"). Not persisted.
     @Published var sceneEdited = false
     /// Persisted desk (groups), so groups survive a relaunch.
@@ -37,5 +39,6 @@ final class Preferences: ObservableObject {
         launchAtLogin = d.bool(forKey: "launchAtLogin")
         currentScene = d.string(forKey: "currentScene")
         groupHotkeysEnabled = d.object(forKey: "groupHotkeysEnabled") as? Bool ?? true
+        stageManagerTurnedOff = d.bool(forKey: "stageManagerTurnedOff")
     }
 }
