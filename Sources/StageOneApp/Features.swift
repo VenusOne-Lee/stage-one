@@ -8,11 +8,14 @@ enum Features {
         GroupHotKeys.shared.install()
         DragToGroup.shared.install()
         StripPlacement.shared.install()
+        LaneGuardService.shared.install()
+        LaneGuardService.shared.sweep(animated: false)
     }
 
     static func stop() {
         GroupHotKeys.shared.uninstall()
         DragToGroup.shared.uninstall()
         StripPlacement.shared.uninstall()
+        LaneGuardService.shared.uninstall()
     }
 }
