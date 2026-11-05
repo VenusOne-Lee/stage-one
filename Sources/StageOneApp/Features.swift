@@ -7,10 +7,12 @@ enum Features {
     static func start() {
         GroupHotKeys.shared.install()
         DragToGroup.shared.install()
+        StripPlacement.shared.install()
     }
 
     static func stop() {
         GroupHotKeys.shared.uninstall()
         DragToGroup.shared.uninstall()
+        StripPlacement.shared.uninstall()
     }
 }
