@@ -88,17 +88,19 @@ final class GroupHotKeys {
                 StageController.shared.switchTo(index: i)
             }) { ids.append(id) }
         }
-        let flags: (NSEvent) -> Void = { e in
-            let optionOnly = e.modifierFlags.intersection(.deviceIndependentFlagsMask) == .option
-            StripManager.shared.model.showNumbers = optionOnly
-        }
         if let g = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged, handler: { e in
-            MainActor.assumeIsolated { flags(e) }
+            let optionOnly = e.modifierFlags.intersection(.deviceIndependentFlagsMask) == .option
+            MainActor.assumeIsolated { GroupHotKeys.optionChanged(optionOnly) }
         }) { monitors.append(g) }
         if let l = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged, handler: { e in
-            MainActor.assumeIsolated { flags(e) }
+            let optionOnly = e.modifierFlags.intersection(.deviceIndependentFlagsMask) == .option
+            MainActor.assumeIsolated { GroupHotKeys.optionChanged(optionOnly) }
             return e
         }) { monitors.append(l) }
+    }
+
+    static func optionChanged(_ down: Bool) {
+        if StripManager.shared.model.showNumbers != down { StripManager.shared.model.showNumbers = down }
     }
 
     func uninstall() {
