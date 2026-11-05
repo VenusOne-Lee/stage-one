@@ -47,7 +47,7 @@ struct StripView: View {
 struct GroupTile: View {
     let group: StageGroup
     let number: Int
-    let edge: Edge
+    let edge: ScreenEdge
     @ObservedObject var controller: StageController
     @ObservedObject var model: StripModel
     @State private var hover = false

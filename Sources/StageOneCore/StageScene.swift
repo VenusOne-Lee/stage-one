@@ -21,14 +21,14 @@ public struct StageScene: Codable, Sendable, Equatable, Identifiable {
     public struct Display: Codable, Sendable, Equatable {
         public var id: String
         public var frame: [Double]
-        public var strip: Edge
-        public var dock: Edge
+        public var strip: ScreenEdge
+        public var dock: ScreenEdge
         public var mode: OverlapMode
         public var size: StripSize
         /// The usable area the scene was saved in, so it can be reflowed on restore (SO-035).
         public var usable: [Double]?
 
-        public init(id: String, frame: [Double], strip: Edge, dock: Edge, mode: OverlapMode, size: StripSize, usable: [Double]? = nil) {
+        public init(id: String, frame: [Double], strip: ScreenEdge, dock: ScreenEdge, mode: OverlapMode, size: StripSize, usable: [Double]? = nil) {
             self.id = id; self.frame = frame; self.strip = strip; self.dock = dock; self.mode = mode; self.size = size; self.usable = usable
         }
 
