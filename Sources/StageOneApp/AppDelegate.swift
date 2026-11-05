@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         CrashSafety.install()
         Panels.shared.handlers[.saveScene] = { SaveSceneHotKey.showSaveBox() }
         Panels.shared.handlers[.scenes] = { ScenesPanel.show() }
+        CommandRouter.setPaused = { $0 ? Engine.pause() : Engine.resume() }
         MenuBarController.shared.install()
         // "· edited" is tracked by SceneEdited (SO-053), which compares the desk with the scene.
 
