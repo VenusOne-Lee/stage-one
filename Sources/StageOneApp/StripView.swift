@@ -23,6 +23,13 @@ struct StripView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .coordinateSpace(name: "strip")
+        .onPreferenceChange(TileFrameKey.self) { [model] frames in
+            MainActor.assumeIsolated { model.tileFrames = frames }
+        }
+        .onPreferenceChange(NewSlotFrameKey.self) { [model] f in
+            MainActor.assumeIsolated { model.newSlotFrame = f }
+        }
         .animation(.spring(response: 0.42, dampingFraction: 0.86), value: groups.map(\.id))
     }
 
@@ -37,6 +44,9 @@ struct StripView: View {
                     GroupTile(group: g, number: index, edge: model.edge, controller: controller, model: model)
                 }
             }
+            .background(GeometryReader { geo in
+                Color.clear.preference(key: TileFrameKey.self, value: [g.id: geo.frame(in: .named("strip"))])
+            })
             .transition(.scale(scale: 0.8).combined(with: .opacity))
         }
         NewGroupSlot(model: model)
@@ -90,6 +100,11 @@ struct GroupTile: View {
             if NSEvent.modifierFlags.contains(.option) { controller.addToStage(group.id) } else { controller.switchTo(group.id) }
         }
         .contextMenu { GroupMenu(group: group, controller: controller, rename: { draft = group.name; renaming = true }) }
+        .onDrag {
+            model.reordering = group.id
+            return NSItemProvider(object: group.id.uuidString as NSString)
+        }
+        .onDrop(of: [.text], delegate: ReorderDrop(target: group.id, model: model, controller: controller))
         .help(group.name)
     }
 
@@ -201,11 +216,15 @@ struct NumberBadge: View {
 struct NewGroupSlot: View {
     @ObservedObject var model: StripModel
     var body: some View {
-        if model.dropTarget != nil || model.dropOnNew {
+        if model.dragging {
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(model.dropOnNew ? Theme.spot : Theme.ink3, style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
                 .frame(width: 150, height: 60)
                 .overlay(Text("+ New group").font(.system(size: 12, weight: .semibold)).foregroundStyle(model.dropOnNew ? Theme.spot : Theme.ink2))
+                .background(Theme.glass.clipShape(RoundedRectangle(cornerRadius: 10)))
+                .background(GeometryReader { geo in
+                    Color.clear.preference(key: NewSlotFrameKey.self, value: geo.frame(in: .named("strip")))
+                })
         }
     }
 }
@@ -228,8 +247,40 @@ struct GroupMenu: View {
                 }
             }
         }
+        if NSScreen.screens.count > 1 {
+            Menu("Move to display") {
+                ForEach(Array(NSScreen.screens.enumerated()), id: \.offset) { i, screen in
+                    Button(screen.localizedName) { controller.moveGroup(group.id, toDisplay: Displays.stableID(of: screen)) }
+                }
+            }
+        }
         Divider()
         Button("Close group") { controller.closeGroup(group.id) }
+    }
+}
+
+/// Drag a group onto another to reorder the strip (SO-023).
+struct ReorderDrop: DropDelegate {
+    let target: UUID
+    let model: StripModel
+    let controller: StageController
+
+    func validateDrop(info: DropInfo) -> Bool { model.reordering != nil }
+
+    func dropEntered(info: DropInfo) {
+        guard let moving = model.reordering, moving != target,
+              let from = controller.desk.groups.firstIndex(where: { $0.id == moving }),
+              let to = controller.desk.groups.firstIndex(where: { $0.id == target }) else { return }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            controller.reorder(from: from, to: to)
+        }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+
+    func performDrop(info: DropInfo) -> Bool {
+        model.reordering = nil
+        return true
     }
 }
 
@@ -237,5 +288,19 @@ enum GroupColorNames {
     static func name(_ hex: String) -> String {
         ["#ef6f2e": "Stage orange", "#3b63e0": "Blue", "#f2b33d": "Amber", "#e0503d": "Red",
          "#8a5cd6": "Violet", "#d6457f": "Pink", "#2f8fd8": "Sky", "#b9bcc7": "Slate"][hex] ?? hex
+    }
+}
+
+struct TileFrameKey: PreferenceKey {
+    static let defaultValue: [UUID: CGRect] = [:]
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
+    }
+}
+
+struct NewSlotFrameKey: PreferenceKey {
+    static let defaultValue: CGRect? = nil
+    static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
+        value = nextValue() ?? value
     }
 }

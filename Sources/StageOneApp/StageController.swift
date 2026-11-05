@@ -49,10 +49,12 @@ final class StageController: ObservableObject {
         }
         thumbTimer?.tolerance = 0.5
         captureAll()
+        Features.start()
     }
 
     /// Puts every window back where the user can see it (Quit and Pause).
     func stop() {
+        Features.stop()
         thumbTimer?.invalidate()
         parking.unparkAll(in: inventory)
         inventory.stop()
@@ -205,9 +207,13 @@ final class StageController: ObservableObject {
     func move(window id: CGWindowID, to groupID: UUID) {
         guard desk.group(containing: id)?.id != groupID else { return }
         mutateDesk { $0.move(windowID: id, to: groupID) }
-        if groupID != desk.activeID, let w = inventory[id] {
+        guard let w = inventory[id] else { return }
+        if groupID != desk.activeID {
             capture([id])
             parking.park(w)
+        } else if parking.isParked(id) {
+            parking.unpark(w)
+            AX.raise(w.element)
         }
     }
 
@@ -246,6 +252,21 @@ final class StageController: ObservableObject {
     }
 
     func reorder(from: Int, to: Int) { mutateDesk { $0.reorder(from: from, to: to) } }
+
+    /// Assigns a group to a display; its windows are reflowed there when it next comes on stage.
+    func moveGroup(_ groupID: UUID, toDisplay displayID: String) {
+        guard let g = desk.groups.first(where: { $0.id == groupID }),
+              let screen = Displays.screen(withID: displayID),
+              let target = ScreenLayouts.current(for: screen) else { return }
+        for id in g.windowIDs {
+            guard let w = inventory[id] else { continue }
+            let current = parking.savedFrame(id) ?? w.frame
+            let source = ScreenLayouts.layout(containing: current)?.usableFrame ?? target.usableFrame
+            let moved = Reflow.remap(current, from: source, to: target.usableFrame)
+            if parking.isParked(id) { parking.setSavedFrame(id, moved) } else { mover.setFrame(w, moved) }
+        }
+        mutateDesk { d in if let i = d.groups.firstIndex(where: { $0.id == groupID }) { d.groups[i].displayID = displayID } }
+    }
 
     // MARK: Events
 
