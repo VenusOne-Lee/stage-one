@@ -12,6 +12,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
+        // SO-133: in-app updates. scripts/build-app.sh copies Sparkle.framework into Contents/Frameworks.
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.0"),
     ],
     targets: [
         // Pure Swift: models, geometry, layouts, scenes, identity. No AppKit, so it is unit-testable anywhere.
@@ -19,7 +21,10 @@ let package = Package(
         // macOS window engine: CGWindowList, Accessibility (AXUIElement), ScreenCaptureKit.
         .target(name: "WindowKit", dependencies: ["StageOneCore"]),
         // The LSUIElement menu bar app.
-        .executableTarget(name: "StageOneApp", dependencies: ["StageOneCore", "WindowKit"]),
+        .executableTarget(name: "StageOneApp", dependencies: [
+            "StageOneCore", "WindowKit",
+            .product(name: "Sparkle", package: "Sparkle"),
+        ]),
         // The `stage` command-line tool. Talks to the app over a local socket.
         .executableTarget(name: "stage", dependencies: [
             "StageOneCore",

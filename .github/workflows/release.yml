@@ -1,0 +1,157 @@
+name: Release
+
+# Push a tag like v0.1.0 (or v0.1.0-beta.1 for a prerelease). See docs/RELEASING.md.
+# With signing secrets: Developer ID + hardened runtime, notarised and stapled.
+# Without them: ad-hoc signed, same artifacts.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 75
+    env:
+      MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+      MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+      SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+      SPARKLE_ED_PUBLIC_KEY: ${{ vars.SPARKLE_ED_PUBLIC_KEY }}
+      SPARKLE_TOOLS_VERSION: "2.6.4"
+      REPO_URL: https://github.com/${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)"
+          swift --version
+
+      - name: Version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          if [[ "$VERSION" == *-* ]]; then echo "PRERELEASE=1" >> "$GITHUB_ENV"; else echo "PRERELEASE=0" >> "$GITHUB_ENV"; fi
+          echo "Releasing $VERSION from $TAG"
+
+      - name: Test
+        run: swift test
+
+      - name: Import Developer ID certificate
+        if: env.MACOS_CERT_P12 != '' && env.MACOS_CERT_PASSWORD != ''
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          echo "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          rm -f "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" | grep -o '"Developer ID Application[^"]*"' | head -1 | tr -d '"')"
+          if [ -z "$IDENTITY" ]; then echo "error: no Developer ID Application identity in MACOS_CERT_P12" >&2; exit 1; fi
+          echo "Signing as $IDENTITY"
+          echo "SIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+          echo "SIGNING_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+
+      - name: Build and sign app
+        run: NO_DMG=1 scripts/build-app.sh
+
+      - name: Smoke test
+        run: scripts/smoke-test.sh "dist/Stage One.app"
+
+      - name: Notarise app
+        if: env.SIGN_IDENTITY != '' && env.APPLE_ID != '' && env.APPLE_TEAM_ID != '' && env.APPLE_APP_PASSWORD != ''
+        run: scripts/notarize.sh "dist/Stage One.app"
+
+      - name: DMG and zip
+        run: |
+          scripts/make-dmg.sh "dist/Stage One.app"
+          ditto -c -k --sequesterRsrc --keepParent "dist/Stage One.app" "dist/StageOne-$VERSION.zip"
+
+      - name: Notarise DMG
+        if: env.SIGN_IDENTITY != '' && env.APPLE_ID != '' && env.APPLE_TEAM_ID != '' && env.APPLE_APP_PASSWORD != ''
+        run: scripts/notarize.sh "dist/StageOne-$VERSION.dmg"
+
+      - name: Sparkle appcast
+        if: env.SPARKLE_ED_PRIVATE_KEY != ''
+        run: |
+          if [ -z "$SPARKLE_ED_PUBLIC_KEY" ]; then
+            echo "::warning::SPARKLE_ED_PUBLIC_KEY repository variable is not set: this build has Sparkle switched off."
+          fi
+          TOOLS="$RUNNER_TEMP/sparkle-tools"
+          mkdir -p "$TOOLS"
+          curl -fsSL "https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE_TOOLS_VERSION/Sparkle-$SPARKLE_TOOLS_VERSION.tar.xz" | tar -xJ -C "$TOOLS"
+          FEED="$RUNNER_TEMP/appcast"
+          mkdir -p "$FEED"
+          cp "dist/StageOne-$VERSION.zip" "$FEED/"
+          # Keep earlier entries when a previous appcast exists.
+          curl -fsSL "$REPO_URL/releases/latest/download/appcast.xml" -o "$FEED/appcast.xml" || rm -f "$FEED/appcast.xml"
+          KEY_FILE="$RUNNER_TEMP/sparkle_ed_key"
+          printf '%s' "$SPARKLE_ED_PRIVATE_KEY" > "$KEY_FILE"
+          "$TOOLS/bin/generate_appcast" --ed-key-file "$KEY_FILE" \
+            --download-url-prefix "$REPO_URL/releases/download/$TAG/" "$FEED"
+          rm -f "$KEY_FILE"
+          cp "$FEED/appcast.xml" dist/appcast.xml
+          cat dist/appcast.xml
+
+      - name: Checksums and Homebrew cask
+        run: |
+          cd dist
+          shasum -a 256 "StageOne-$VERSION.dmg" "StageOne-$VERSION.zip" > SHA256SUMS
+          DMG_SHA="$(shasum -a 256 "StageOne-$VERSION.dmg" | cut -d' ' -f1)"
+          cd ..
+          sed -e "s/^  version \".*\"/  version \"$VERSION\"/" -e "s/^  sha256 .*/  sha256 \"$DMG_SHA\"/" Casks/stage-one.rb > dist/stage-one.rb
+          echo "version: $VERSION"
+          echo "sha256:  $DMG_SHA"
+          {
+            echo "### Stage One $VERSION"
+            echo
+            echo "- Signed: ${SIGN_IDENTITY:-ad-hoc}"
+            echo "- DMG sha256: \`$DMG_SHA\`"
+            echo
+            echo "Bump the cask (docs/RELEASING.md): replace Casks/stage-one.rb with"
+            echo
+            echo '```ruby'
+            cat dist/stage-one.rb
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          files=("dist/StageOne-$VERSION.dmg" "dist/StageOne-$VERSION.zip" dist/SHA256SUMS dist/stage-one.rb)
+          if [ -f dist/appcast.xml ]; then files+=(dist/appcast.xml); fi
+          flags=(--title "Stage One $VERSION" --generate-notes)
+          if [ "$PRERELEASE" = "1" ]; then flags+=(--prerelease); fi
+          gh release create "$TAG" "${files[@]}" "${flags[@]}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StageOne-release
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/SHA256SUMS
+            dist/appcast.xml
+            dist/stage-one.rb
+
+      - name: Remove signing keychain
+        if: always() && env.SIGNING_KEYCHAIN != ''
+        run: security delete-keychain "$SIGNING_KEYCHAIN" || true

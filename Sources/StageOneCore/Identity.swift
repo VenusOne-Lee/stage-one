@@ -26,13 +26,23 @@ public enum IdentityMatcher {
 
     public static func score(saved: StageScene.Window, savedOrder: Int, savedCountForApp: Int,
                              live: WindowSnapshot, liveOrder: Int, liveCountForApp: Int) -> Double {
+        score(saved: saved, savedOrder: savedOrder, savedCountForApp: savedCountForApp,
+              live: live, liveOrder: liveOrder, liveCountForApp: liveCountForApp,
+              titleSimilarity: { similarity(normalize(saved.title), normalize(live.title)) })
+    }
+
+    /// `titleSimilarity` is only evaluated when the document doesn't decide the match, so
+    /// `match` can pass in a version that reuses titles normalised once per window (SO-130).
+    static func score(saved: StageScene.Window, savedOrder: Int, savedCountForApp: Int,
+                      live: WindowSnapshot, liveOrder: Int, liveCountForApp: Int,
+                      titleSimilarity: () -> Double) -> Double {
         guard saved.bundleId == live.bundleID else { return 0 }
         var s = 0.35 // same app
         if let d = saved.document, let ld = live.document, !d.isEmpty {
             if d == ld { return 1.0 }
             s -= 0.2
         }
-        let sim = similarity(normalize(saved.title), normalize(live.title))
+        let sim = titleSimilarity()
         s += 0.45 * sim
         // Single window for the app on both sides: very likely the same one.
         if savedCountForApp == 1 && liveCountForApp == 1 { s += 0.3 }
@@ -53,11 +63,20 @@ public enum IdentityMatcher {
         var liveOrder: [Int] = [], liveCount: [String: Int] = [:]
         for w in live { liveOrder.append(liveCount[w.bundleID, default: 0]); liveCount[w.bundleID, default: 0] += 1 }
 
+        // Normalise and tokenise each title once, and only compare windows of the same app
+        // (SO-130: keeps 200 windows well under the 50ms budget).
+        let savedTitles = saved.map { Title($0.title) }
+        let liveTitles = live.map { Title($0.title) }
+        var liveByApp: [String: [Int]] = [:]
+        for (j, l) in live.enumerated() { liveByApp[l.bundleID, default: []].append(j) }
+
         var pairs: [(Int, Int, Double)] = []
         for (i, s) in saved.enumerated() {
-            for (j, l) in live.enumerated() where l.bundleID == s.bundleId {
+            for j in liveByApp[s.bundleId] ?? [] {
+                let l = live[j]
                 let c = score(saved: s, savedOrder: savedOrder[i], savedCountForApp: savedCount[s.bundleId] ?? 0,
-                              live: l, liveOrder: liveOrder[j], liveCountForApp: liveCount[l.bundleID] ?? 0)
+                              live: l, liveOrder: liveOrder[j], liveCountForApp: liveCount[l.bundleID] ?? 0,
+                              titleSimilarity: { savedTitles[i].similarity(to: liveTitles[j]) })
                 if c >= threshold { pairs.append((i, j, c)) }
             }
         }
@@ -87,13 +106,34 @@ public enum IdentityMatcher {
 
     /// Token Jaccard blended with a prefix bonus. 0...1.
     public static func similarity(_ a: String, _ b: String) -> Double {
+        similarity(a, tokens(a), b, tokens(b))
+    }
+
+    static func tokens(_ s: String) -> Set<String> {
+        Set(s.split { !$0.isLetter && !$0.isNumber }.map(String.init))
+    }
+
+    static func similarity(_ a: String, _ ta: Set<String>, _ b: String, _ tb: Set<String>) -> Double {
         if a == b { return 1 }
         if a.isEmpty || b.isEmpty { return 0 }
-        let ta = Set(a.split { !$0.isLetter && !$0.isNumber }.map(String.init))
-        let tb = Set(b.split { !$0.isLetter && !$0.isNumber }.map(String.init))
         guard !ta.isEmpty || !tb.isEmpty else { return 0 }
         let j = Double(ta.intersection(tb).count) / Double(ta.union(tb).count)
         let prefix = Double(zip(a, b).prefix { $0 == $1 }.count) / Double(max(a.count, b.count))
         return min(1, 0.75 * j + 0.25 * prefix)
+    }
+
+    /// A title normalised and tokenised once.
+    struct Title {
+        let text: String
+        let tokens: Set<String>
+
+        init(_ raw: String) {
+            text = IdentityMatcher.normalize(raw)
+            tokens = IdentityMatcher.tokens(text)
+        }
+
+        func similarity(to other: Title) -> Double {
+            IdentityMatcher.similarity(text, tokens, other.text, other.tokens)
+        }
     }
 }
