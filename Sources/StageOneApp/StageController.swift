@@ -38,9 +38,15 @@ final class StageController: ObservableObject {
         inventory.onEvent = { [weak self] e in self?.handle(e) }
         inventory.start()
         parking.reconcile(with: inventory)
-        if desk.groups.isEmpty || desk.groups.allSatisfy({ $0.windowIDs.allSatisfy { inventory[$0] == nil } }) {
+        let stale = desk.groups.isEmpty || desk.groups.allSatisfy({ $0.windowIDs.allSatisfy { inventory[$0] == nil } })
+        if stale {
             desk = Desk()
             importWindowsByApp()
+            // After a restart window ids are new: bring back the last session by identity.
+            if let last = SessionAutosave.lastSession(), !inventory.windows.isEmpty {
+                SceneRestore.restore(last, undoable: false, relaunch: false, quiet: true)
+                Preferences.shared.currentScene = nil
+            }
         }
         inventoryChanged()
         enforceStage()
@@ -303,6 +309,7 @@ final class StageController: ObservableObject {
     }
 
     private func captureOnStage() {
+        guard started, !prefs.paused else { return }  // SO-130: no refresh while paused
         capture(desk.active?.windowIDs ?? [])
     }
 

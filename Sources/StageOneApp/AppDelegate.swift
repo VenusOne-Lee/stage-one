@@ -5,12 +5,9 @@ import WindowKit
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        CrashSafety.install()
         MenuBarController.shared.install()
-        // Any desk change after a scene is on stage marks it edited; saving or restoring a scene clears it.
-        StageController.shared.onDeskChange.append {
-            let prefs = Preferences.shared
-            if prefs.currentScene != nil, !prefs.sceneEdited { prefs.sceneEdited = true }
-        }
+        // "· edited" is tracked by SceneEdited (SO-053), which compares the desk with the scene.
 
         // The engine only runs once Accessibility is trusted. Until then the walkthrough explains why.
         Engine.startIfReady()
@@ -20,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             OnboardingWindow.shared.show(from: .accessibility)
         }
         if !Permissions.accessibility { Engine.watchForAccessibility() }
+        UpdateChecker.shared.start()
     }
 
     func applicationWillTerminate(_ notification: Notification) {

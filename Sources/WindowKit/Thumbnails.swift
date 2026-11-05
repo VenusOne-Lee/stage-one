@@ -11,8 +11,23 @@ public final class Thumbnails: ObservableObject {
     @Published public private(set) var images: [CGWindowID: NSImage] = [:]
     public var width: CGFloat = 320
     private var inFlight = false
+    /// True while the displays sleep or the user session is switched out (SO-130):
+    /// nothing is visible, so capturing would only burn CPU.
+    public private(set) var isSuspended = false
+    private var tokens: [NSObjectProtocol] = []
 
-    public init() {}
+    public init() {
+        let nc = NSWorkspace.shared.notificationCenter
+        let pairs: [(Notification.Name, Bool)] = [
+            (NSWorkspace.screensDidSleepNotification, true), (NSWorkspace.screensDidWakeNotification, false),
+            (NSWorkspace.sessionDidResignActiveNotification, true), (NSWorkspace.sessionDidBecomeActiveNotification, false),
+        ]
+        for (name, suspended) in pairs {
+            tokens.append(nc.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.isSuspended = suspended }
+            })
+        }
+    }
 
     public func image(for id: CGWindowID) -> NSImage? { images[id] }
 
@@ -22,7 +37,7 @@ public final class Thumbnails: ObservableObject {
 
     /// Captures the given windows. Safe to call often; overlapping calls are dropped.
     public func capture(_ ids: [CGWindowID]) {
-        guard !ids.isEmpty, !inFlight, CGPreflightScreenCaptureAccess() else { return }
+        guard !ids.isEmpty, !inFlight, !isSuspended, CGPreflightScreenCaptureAccess() else { return }
         inFlight = true
         let width = self.width
         Task { [weak self] in
