@@ -8,7 +8,8 @@ APP="${1:-dist/Stage One.app}"
 
 test -f "$APP/Contents/Resources/AppIcon.icns"
 test -d "$APP/Contents/Frameworks/Sparkle.framework"
-otool -L "$APP/Contents/MacOS/StageOne" | grep -q "@rpath/Sparkle.framework"
+LINKS="$(otool -L "$APP/Contents/MacOS/StageOne")"
+grep -q "@rpath/Sparkle.framework" <<< "$LINKS"
 "$APP/Contents/Helpers/stage" --help >/dev/null
 
 # SO-131: the watchdog returns at once for a dead pid and removes an empty parked file.
