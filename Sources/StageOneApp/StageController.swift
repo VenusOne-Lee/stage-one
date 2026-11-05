@@ -207,9 +207,13 @@ final class StageController: ObservableObject {
     func move(window id: CGWindowID, to groupID: UUID) {
         guard desk.group(containing: id)?.id != groupID else { return }
         mutateDesk { $0.move(windowID: id, to: groupID) }
-        if groupID != desk.activeID, let w = inventory[id] {
+        guard let w = inventory[id] else { return }
+        if groupID != desk.activeID {
             capture([id])
             parking.park(w)
+        } else if parking.isParked(id) {
+            parking.unpark(w)
+            AX.raise(w.element)
         }
     }
 
