@@ -72,7 +72,7 @@ enum SceneTrigger: String, CaseIterable {
         }
     }
 
-    var rule: StageScene.Rule? {
+    @MainActor var rule: StageScene.Rule? {
         switch self {
         case .none: return nil
         case .displayConnected: return .init(type: "displayConnected", display: ScreenLayouts.current()?.displayID)
