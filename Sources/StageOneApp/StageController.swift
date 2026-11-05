@@ -253,6 +253,21 @@ final class StageController: ObservableObject {
 
     func reorder(from: Int, to: Int) { mutateDesk { $0.reorder(from: from, to: to) } }
 
+    /// Assigns a group to a display; its windows are reflowed there when it next comes on stage.
+    func moveGroup(_ groupID: UUID, toDisplay displayID: String) {
+        guard let g = desk.groups.first(where: { $0.id == groupID }),
+              let screen = Displays.screen(withID: displayID),
+              let target = ScreenLayouts.current(for: screen) else { return }
+        for id in g.windowIDs {
+            guard let w = inventory[id] else { continue }
+            let current = parking.savedFrame(id) ?? w.frame
+            let source = ScreenLayouts.layout(containing: current)?.usableFrame ?? target.usableFrame
+            let moved = Reflow.remap(current, from: source, to: target.usableFrame)
+            if parking.isParked(id) { parking.setSavedFrame(id, moved) } else { mover.setFrame(w, moved) }
+        }
+        mutateDesk { d in if let i = d.groups.firstIndex(where: { $0.id == groupID }) { d.groups[i].displayID = displayID } }
+    }
+
     // MARK: Events
 
     private func handle(_ e: WindowEvent) {
