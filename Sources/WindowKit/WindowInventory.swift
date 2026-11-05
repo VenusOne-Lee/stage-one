@@ -67,6 +67,8 @@ public final class WindowInventory: ObservableObject {
     private var observers: [pid_t: AppObserver] = [:]
     private var rescanScheduled = false
     private var safetyTimer: Timer?
+    /// Hash of the last CGWindowList pass (ids, owners, bounds, on-screen), see `safetyRescan`.
+    private var lastSignature: Int?
     private var workspaceTokens: [NSObjectProtocol] = []
     private let ownPID = ProcessInfo.processInfo.processIdentifier
 
@@ -100,7 +102,7 @@ public final class WindowInventory: ObservableObject {
         }
         rescan()
         safetyTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.rescan() }
+            MainActor.assumeIsolated { self?.safetyRescan() }
         }
         safetyTimer?.tolerance = 2
     }
@@ -131,11 +133,46 @@ public final class WindowInventory: ObservableObject {
         }
     }
 
+    private static func windowList() -> [[String: Any]]? {
+        let opts: CGWindowListOption = [.optionAll, .excludeDesktopElements]
+        return CGWindowListCopyWindowInfo(opts, kCGNullWindowID) as? [[String: Any]]
+    }
+
+    /// SO-130: a cheap fingerprint of the layer-0 window list. Same value means no window
+    /// appeared, closed, moved, resized or changed visibility since the last scan.
+    static func signature(of info: [[String: Any]]) -> Int {
+        var h = Hasher()
+        for w in info {
+            guard (w[kCGWindowLayer as String] as? Int) == 0,
+                  let id = w[kCGWindowNumber as String] as? CGWindowID else { continue }
+            h.combine(id)
+            h.combine(w[kCGWindowOwnerPID as String] as? pid_t ?? 0)
+            h.combine(w[kCGWindowIsOnscreen as String] as? Bool ?? false)
+            h.combine(w[kCGWindowAlpha as String] as? Double ?? 1)
+            if let d = w[kCGWindowBounds as String] as? NSDictionary,
+               let r = CGRect(dictionaryRepresentation: d as CFDictionary) {
+                h.combine(r.minX); h.combine(r.minY); h.combine(r.width); h.combine(r.height)
+            }
+        }
+        return h.finalize()
+    }
+
+    /// The periodic safety net: skips all Accessibility work when CGWindowList is unchanged.
+    /// Titles and focus still update through AX notifications.
+    public func safetyRescan() {
+        guard AXIsProcessTrusted(), let info = Self.windowList() else { return }
+        if let last = lastSignature, last == Self.signature(of: info) { return }
+        rescan(using: info)
+    }
+
     /// Full rescan. Keeps existing TrackedWindow objects so identities stay stable.
     public func rescan() {
-        guard AXIsProcessTrusted() else { return }
-        let opts: CGWindowListOption = [.optionAll, .excludeDesktopElements]
-        guard let info = CGWindowListCopyWindowInfo(opts, kCGNullWindowID) as? [[String: Any]] else { return }
+        guard AXIsProcessTrusted(), let info = Self.windowList() else { return }
+        rescan(using: info)
+    }
+
+    private func rescan(using info: [[String: Any]]) {
+        lastSignature = Self.signature(of: info)
 
         // CG order is front to back; keep it so stacking order is known.
         var order: [CGWindowID] = []
