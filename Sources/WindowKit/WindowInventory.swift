@@ -9,6 +9,8 @@ public final class TrackedWindow: Identifiable {
     public let pid: pid_t
     public let element: AXUIElement
     public internal(set) var snapshot: WindowSnapshot
+    /// The frame before the most recent move/resize event (used to undo drags).
+    public internal(set) var previousFrame: CGRect?
     /// Minimum size learned from failed resizes (apps rarely report it).
     public var learnedMinSize: CGSize = .zero
 
@@ -219,6 +221,7 @@ public final class WindowInventory: ObservableObject {
     func refresh(element: AXUIElement) -> CGWindowID? {
         guard let id = AX.windowID(of: element), let w = byID[id] else { return nil }
         if let f = AX.frame(element) {
+            if f != w.snapshot.frame { w.previousFrame = w.snapshot.frame }
             w.snapshot.frame = f
             w.snapshot.displayID = Displays.screen(for: f).map(Displays.stableID(of:)) ?? w.snapshot.displayID
         }
