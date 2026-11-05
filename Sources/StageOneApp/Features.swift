@@ -14,6 +14,7 @@ enum Features {
         SnapService.shared.install()
         SaveSceneHotKey.install()
         SessionAutosave.install()
+        SceneRelaunch.install()
         LaneGuardService.shared.sweep(animated: false)
     }
 
