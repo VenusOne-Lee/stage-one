@@ -5,3 +5,4 @@ DerivedData/
 dist/
 .DS_Store
 Resources/AppIcon.icns
+.claude/worktrees/
