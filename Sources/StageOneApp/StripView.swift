@@ -125,7 +125,7 @@ struct GroupTile: View {
             return NSItemProvider(object: group.id.uuidString as NSString)
         }
         .onDrop(of: [.text], delegate: ReorderDrop(target: group.id, model: model, controller: controller))
-        .help(group.name)
+        .help("\(group.name) · ⌥-click to add to the stage")
     }
 
     @ViewBuilder
@@ -225,9 +225,12 @@ struct CompactTile: View {
             }
         }
         .onHover { hover = $0 }
-        .onTapGesture { controller.switchTo(group.id) }
+        .onTapGesture {
+            // SO-025: ⌥-click adds the group to the stage, like Stage Manager's shift-click.
+            if NSEvent.modifierFlags.contains(.option) { controller.addToStage(group.id) } else { controller.switchTo(group.id) }
+        }
         .contextMenu { GroupMenu(group: group, controller: controller, rename: {}) }
-        .help(group.name)
+        .help("\(group.name) · ⌥-click to add to the stage")
     }
 }
 

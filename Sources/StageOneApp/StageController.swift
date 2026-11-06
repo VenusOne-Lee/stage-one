@@ -253,7 +253,7 @@ final class StageController: ObservableObject {
 
     /// SO-025: add a group's windows to the current stage instead of swapping.
     func addToStage(_ groupID: UUID) {
-        guard let activeID = desk.activeID, groupID != activeID,
+        guard started, let activeID = desk.activeID, groupID != activeID,
               let g = desk.groups.first(where: { $0.id == groupID }) else { return }
         for id in g.windowIDs {
             if let w = inventory[id] { parking.unpark(w) }
