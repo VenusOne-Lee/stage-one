@@ -9,6 +9,8 @@ struct SaveSceneBox: View {
     @State private var name = Scenes.suggestedName()
     @State private var trigger: SceneTrigger = .none
     @State private var triggerApp = ""
+    @State private var triggerMatch = ""
+    @State private var calendarDenied = false
     @State private var triggerTime = Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date()) ?? Date()
     @State private var dnd = false
     @State private var meeting = false
@@ -40,6 +42,10 @@ struct SaveSceneBox: View {
                         ForEach(SceneTrigger.runningApps(), id: \.bundle) { Text($0.name).tag($0.bundle) }
                     }
                     .labelsHidden().pickerStyle(.menu).fixedSize()
+                } else if trigger == .calendar {
+                    TextField("Title word or calendar", text: $triggerMatch)
+                        .textFieldStyle(.roundedBorder).frame(width: 150)
+                        .help("Matches an event whose title contains this, or a calendar with this name. Empty matches any event.")
                 } else if trigger == .time {
                     DatePicker("", selection: $triggerTime, displayedComponents: .hourAndMinute)
                         .labelsHidden().fixedSize()
@@ -63,6 +69,10 @@ struct SaveSceneBox: View {
             }
             .font(.system(size: 12))
             .foregroundStyle(Theme.ink2)
+            if calendarDenied {
+                Text("Stage One can't see your calendar. Allow it in System Settings › Privacy & Security › Calendars.")
+                    .font(.system(size: 11)).foregroundStyle(Theme.spot)
+            }
             HStack {
                 let c = StageController.shared
                 Text("\(c.desk.groups.filter { !$0.windowIDs.isEmpty }.count) groups · \(c.inventory.windows.count) windows")
@@ -85,7 +95,16 @@ struct SaveSceneBox: View {
         let picture = wallpaper ? NSScreen.main.flatMap { NSWorkspace.shared.desktopImageURL(for: $0)?.path } : nil
         let options = StageScene.Options(dnd: dnd, meetingMode: meeting, hideOthers: others == .hide,
                                          closeOthers: others == .quit, wallpaper: picture)
-        if Scenes.save(name: name, options: options, rule: trigger.rule(app: triggerApp, time: triggerTime)) != nil { onDone() }
+        let rule = trigger.rule(app: triggerApp, time: triggerTime, match: triggerMatch)
+        guard trigger == .calendar else {
+            if Scenes.save(name: name, options: options, rule: rule) != nil { onDone() }
+            return
+        }
+        // SO-073: calendar access is asked only when the first calendar rule is made.
+        Task { @MainActor in
+            guard await CalendarWatcher.shared.requestAccess() else { calendarDenied = true; return }
+            if Scenes.save(name: name, options: options, rule: rule) != nil { onDone() }
+        }
     }
 }
 
@@ -102,9 +121,9 @@ enum OtherApps: String, CaseIterable {
     }
 }
 
-/// Triggers offered in the Save box (the rule engine arrives with SO-070).
+/// Triggers offered in the Save box.
 enum SceneTrigger: String, CaseIterable {
-    case none, displayConnected, displayDisconnected, focus, appLaunched, time
+    case none, displayConnected, displayDisconnected, focus, calendar, appLaunched, time
 
     var title: String {
         switch self {
@@ -112,13 +131,14 @@ enum SceneTrigger: String, CaseIterable {
         case .displayConnected: return "When this display connects"
         case .displayDisconnected: return "When a display unplugs"
         case .focus: return "When a Focus starts"
+        case .calendar: return "When a calendar event starts"
         case .appLaunched: return "When an app opens"
         case .time: return "At a set time"
         }
     }
 
     /// The rule to save. "This display" is the newest one connected (an external, usually).
-    @MainActor func rule(app: String, time: Date) -> StageScene.Rule? {
+    @MainActor func rule(app: String, time: Date, match: String = "") -> StageScene.Rule? {
         switch self {
         case .none: return nil
         case .displayConnected:
@@ -129,6 +149,9 @@ enum SceneTrigger: String, CaseIterable {
             let c = Calendar.current.dateComponents([.hour, .minute], from: time)
             return .init(type: rawValue, time: String(format: "%02d:%02d", c.hour ?? 9, c.minute ?? 0))
         case .focus: return .init(type: rawValue)
+        case .calendar:
+            let m = match.trimmingCharacters(in: .whitespaces)
+            return .init(type: rawValue, match: m.isEmpty ? nil : m)
         }
     }
 

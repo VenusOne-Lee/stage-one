@@ -259,7 +259,7 @@ Acceptance:
 - [ ] A `SetFocusFilterIntent` lets a Focus mode choose a scene.
 ### SO-073 · Calendar rules · P2 · M
 Acceptance:
-- [ ] Uses EventKit, with permission asked only when this rule is first made. Rules match an event title keyword or a calendar.
+- [x] Uses EventKit, with permission asked only when this rule is first made. Rules match an event title keyword or a calendar.
 ### SO-074 · Wi-Fi rules · P2 · S
 Acceptance:
 - [ ] Uses CoreWLAN for the network name. Explains that macOS needs Location access to read it.
