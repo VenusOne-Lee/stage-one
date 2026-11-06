@@ -130,7 +130,8 @@ struct ToggleMeetingModeIntent: AppIntent {
         }
         let on = !SceneOptionsService.meetingModeOn
         set(on)
-        return .result(dialog: on ? "Meeting mode is on." : "Meeting mode is off.")
+        let dialog: IntentDialog = on ? "Meeting mode is on." : "Meeting mode is off."
+        return .result(dialog: dialog)
     }
 }
 
