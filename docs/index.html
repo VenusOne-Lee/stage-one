@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only">
+<title>Stage One: Stage Manager's calm, with the memory it never had</title>
+<meta name="description" content="A free, open source macOS window manager. Groups in a side strip, saved scenes, Rewind, layouts and rules. MIT licensed.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --page:#efe9e3; --ink:#20222b; --ink-2:#585b68; --ink-3:#8b8d98;
+  --glass:rgba(255,252,249,.72); --line:rgba(32,34,43,.10);
+  --spot:#ef6f2e; --spot-soft:#fde3d2; --focus:#3b63e0; --win:#fffdfb; --win-bar:#f5f1ec;
+  --display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
+  --ui:-apple-system,BlinkMacSystemFont,"Figtree","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{margin:0;background:var(--page);color:var(--ink);font-family:var(--ui);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+a:focus-visible,button:focus-visible{outline:2px solid var(--focus);outline-offset:3px;border-radius:8px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+nav{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:700;font-size:20px;text-decoration:none}
+.mark{width:22px;height:22px;border-radius:50%;border:5px solid var(--spot);box-shadow:0 0 0 3px var(--spot-soft)}
+nav .links{display:flex;gap:22px;font-size:14.5px;color:var(--ink-2)}
+nav .links a{text-decoration:none}
+nav .links a:hover{color:var(--ink)}
+.hero{padding:56px 0 28px;text-align:center}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(40px,6.4vw,72px);line-height:1.02;letter-spacing:-.02em;margin:0 auto;max-width:14ch}
+h1 em{font-style:normal;color:var(--spot)}
+.lede{font-size:clamp(17px,2.1vw,20px);color:var(--ink-2);max-width:40em;margin:22px auto 0}
+.cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:30px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:13px 22px;border-radius:999px;font-weight:600;font-size:15.5px;text-decoration:none;border:0}
+.btn.spot{background:var(--spot);color:#fff;box-shadow:0 8px 24px rgba(239,111,46,.35)}
+.btn.spot:hover{filter:brightness(1.05)}
+.btn.ghost{background:var(--glass);box-shadow:0 0 0 1px var(--line) inset}
+.fine{margin-top:12px;font-size:13px;color:var(--ink-3)}
+.fine code{font-family:var(--mono);font-size:12.5px;background:rgba(32,34,43,.06);padding:2px 6px;border-radius:6px}
+.demo{margin:44px auto 0;max-width:980px;aspect-ratio:16/10;border-radius:18px;overflow:hidden;position:relative;
+  background:linear-gradient(135deg,#f7c9a6,#f3b58f 45%,#e9a07e);box-shadow:0 40px 100px rgba(60,35,25,.28),0 0 0 .5px rgba(0,0,0,.14)}
+.demo video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+/* Drawn desk, shown until the recorded demo is in place */
+.sketch{position:absolute;inset:0}
+.strip{position:absolute;left:2.2%;top:12%;bottom:12%;width:12%;display:flex;flex-direction:column;gap:5%;justify-content:center}
+.tile{background:var(--glass);border-radius:10px;height:16%;box-shadow:0 6px 18px rgba(60,35,25,.18);position:relative;
+  animation:float 6s ease-in-out infinite}
+.tile:nth-child(2){animation-delay:-1.5s}.tile:nth-child(3){animation-delay:-3s}.tile:nth-child(4){animation-delay:-4.5s}
+.tile::after{content:"";position:absolute;left:10%;bottom:10%;width:22%;height:22%;border-radius:5px;background:var(--c,#b9bcc7)}
+.win{position:absolute;background:var(--win);border-radius:10px;box-shadow:0 20px 50px rgba(60,35,25,.25);overflow:hidden}
+.win::before{content:"";display:block;height:7%;min-height:16px;background:var(--win-bar);border-bottom:1px solid var(--line)}
+.w1{left:17%;top:8%;width:46%;height:82%;animation:slide 9s ease-in-out infinite}
+.w2{left:65%;top:8%;width:32%;height:40%;animation:slide 9s ease-in-out infinite;animation-delay:-.2s}
+.w3{left:65%;top:50%;width:32%;height:40%;animation:slide 9s ease-in-out infinite;animation-delay:-.4s}
+.line{height:5px;border-radius:3px;background:rgba(32,34,43,.08);margin:7% 8% 0}
+.line.s{width:40%}.line.o{background:var(--spot-soft);width:55%}
+.toast{position:absolute;left:50%;bottom:6%;transform:translateX(-50%);background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  padding:9px 16px;border-radius:999px;font-size:13px;font-weight:600;box-shadow:0 10px 30px rgba(60,35,25,.2);white-space:nowrap;animation:toast 9s ease-in-out infinite}
+.toast b{color:var(--spot)}
+@keyframes float{50%{transform:translateY(-4px)}}
+@keyframes slide{0%,8%{transform:translateX(-14%) scale(.92);opacity:0}22%,86%{transform:none;opacity:1}100%{transform:translateX(-14%) scale(.92);opacity:0}}
+@keyframes toast{0%,24%{opacity:0;transform:translate(-50%,10px)}32%,80%{opacity:1;transform:translate(-50%,0)}92%,100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.tile,.win,.toast{animation:none}}
+section{padding:76px 0 0}
+h2{font-family:var(--display);font-weight:700;font-size:clamp(28px,3.6vw,40px);letter-spacing:-.015em;line-height:1.1;margin:0 0 10px}
+.sub{color:var(--ink-2);margin:0 0 28px;max-width:40em}
+.table{background:var(--glass);border-radius:18px;box-shadow:0 0 0 1px var(--line) inset;overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:15px 18px;vertical-align:top;border-top:1px solid var(--line)}
+tr:first-child th{border-top:0}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);font-weight:600}
+td:first-child{font-weight:600;width:24%}
+td:nth-child(2){color:var(--ink-3);width:26%}
+th:last-child{color:var(--spot)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card{background:var(--glass);border-radius:16px;padding:22px;box-shadow:0 0 0 1px var(--line) inset}
+.card h3{font-family:var(--display);font-size:20px;margin:0 0 6px}
+.card p{margin:0;color:var(--ink-2);font-size:15px}
+.card .k{font-family:var(--mono);font-size:12px;color:var(--spot);margin-bottom:10px;display:block}
+footer{padding:80px 0 48px;color:var(--ink-3);font-size:14px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+@media (max-width:760px){
+  nav .links a:not(.gh){display:none}
+  .grid{grid-template-columns:1fr}
+  table,thead,tbody,tr,th,td{display:block}
+  tr:first-child{display:none}
+  tr{border-top:1px solid var(--line);padding:12px 0}
+  th,td{border:0;padding:4px 18px;width:auto!important}
+  td:nth-child(2)::before{content:"Stage Manager: "}
+  td:nth-child(3)::before{content:"Stage One: ";color:var(--spot);font-weight:600}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="#"><span class="mark" aria-hidden="true"></span>Stage One</a>
+    <div class="links">
+      <a href="#compare">Compare</a>
+      <a href="#features">Features</a>
+      <a class="gh" href="https://github.com/VenusOne-Lee/stage-one">GitHub</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <h1>Stage Manager's calm, with the <em>memory</em> it never had.</h1>
+    <p class="lede">Group your windows, arrange them in one click, and save the whole desk as a scene you can bring back tomorrow, on another monitor, or after a restart. Free and open source.</p>
+    <div class="cta">
+      <a class="btn spot" href="https://github.com/VenusOne-Lee/stage-one/releases/latest">Download for Mac</a>
+      <a class="btn ghost" href="https://github.com/VenusOne-Lee/stage-one">View on GitHub</a>
+    </div>
+    <p class="fine">macOS 15 or later · MIT licensed</p>
+
+    <div class="demo">
+      <div class="sketch" aria-hidden="true">
+        <div class="strip">
+          <div class="tile" style="--c:#ef6f2e"></div>
+          <div class="tile" style="--c:#3b63e0"></div>
+          <div class="tile" style="--c:#f2b33d"></div>
+          <div class="tile" style="--c:#b9bcc7"></div>
+        </div>
+        <div class="win w1"><div class="line o"></div><div class="line"></div><div class="line"></div><div class="line s"></div></div>
+        <div class="win w2"><div class="line"></div><div class="line s"></div></div>
+        <div class="win w3"><div class="line"></div><div class="line s"></div></div>
+        <div class="toast">Restored <b>“Deep build”</b> · 7 windows</div>
+      </div>
+      <!-- Demo recorded with Vision One. Drop it in at docs/media/demo.mp4; until then the drawn desk shows. -->
+      <video autoplay muted loop playsinline preload="metadata" aria-label="Stage One restoring a scene"
+             onerror="this.remove()" oncanplay="this.previousElementSibling.hidden=true">
+        <source src="media/demo.mp4" type="video/mp4" onerror="this.parentElement.remove()">
+      </video>
+    </div>
+  </header>
+
+  <section id="compare">
+    <h2>What Stage Manager forgets</h2>
+    <p class="sub">Stage One keeps the side strip and the calm, and adds what people keep asking Apple for.</p>
+    <div class="table">
+      <table>
+        <tr><th>What you need</th><th>Stage Manager today</th><th>Stage One</th></tr>
+        <tr><td>Come back to a whole setup</td><td>Lost on restart or logout</td><td>Scenes save every group, window, size, position, display and open file. Restore relaunches closed apps.</td></tr>
+        <tr><td>Undo a messy desk</td><td>No history</td><td>Rewind keeps an automatic snapshot every 15 minutes for 7 days. Scrub back and see what changed.</td></tr>
+        <tr><td>Arrange windows neatly</td><td>Free placement only</td><td>Halves, thirds, main + side and grid per stage. Drag to the edge to snap.</td></tr>
+        <tr><td>Find the right group fast</td><td>Up to about 6 unnamed groups</td><td>Unlimited named, coloured groups. ⌥1 to ⌥9, a command bar, search by app.</td></tr>
+        <tr><td>Set up without thinking</td><td>Manual</td><td>Rules restore a scene when a monitor connects, a Focus starts, an app opens or at a time of day.</td></tr>
+        <tr><td>Move between monitors</td><td>Windows pile up on unplug</td><td>Each display has its own layout; plug back in and it all returns.</td></tr>
+        <tr><td>Strip and Dock where you want</td><td>Strip only left or right, opposite the Dock, and it covers app sidebars</td><td>Strip and Dock on any edge, even the same one. Windows never slide under the strip, or set it to auto-hide or compact icons.</td></tr>
+        <tr><td>Run it from your launcher</td><td>Only in Control Centre</td><td>Scenes in Spotlight and Shortcuts, an Alfred workflow (keyword <b>st</b>) and a <code>stage</code> command line tool.</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="features">
+    <h2>Built for the way you actually work</h2>
+    <p class="sub">Everything runs on your Mac. No account, no analytics.</p>
+    <div class="grid">
+      <div class="card"><span class="k">⌘⇧S</span><h3>Scenes</h3><p>Save the desk with one shortcut. Bring it back by name from the menu, Spotlight, Alfred or a rule.</p></div>
+      <div class="card"><span class="k">Rewind</span><h3>Never lose a desk</h3><p>Snapshots every 15 minutes. Bring back the whole desk, or just the one window you closed.</p></div>
+      <div class="card"><span class="k">⌃Space</span><h3>Command bar</h3><p>Fuzzy search across groups, scenes, layouts, rewind points and every window title.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Stage One · free and open source, MIT licensed. A sibling of Vision One.</span>
+    <span><a href="https://github.com/VenusOne-Lee/stage-one">GitHub</a> · <a href="https://github.com/VenusOne-Lee/stage-one/issues/new">Send feedback</a></span>
+  </footer>
+</div>
+</body>
+</html>
