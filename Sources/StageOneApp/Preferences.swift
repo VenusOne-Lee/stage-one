@@ -23,6 +23,10 @@ final class Preferences: ObservableObject {
     @Published var stageManagerTurnedOff: Bool { didSet { d.set(stageManagerTurnedOff, forKey: "stageManagerTurnedOff") } }
     /// SO-014: one set of groups for every Space, or one per Space.
     @Published var spacesMode: SpacesMode { didSet { d.set(spacesMode.rawValue, forKey: "spacesMode") } }
+    /// SO-015: apps Stage One leaves alone (their windows float above the stage).
+    @Published var appExceptions: [AppException] {
+        didSet { d.set(try? JSONEncoder().encode(appExceptions), forKey: "appExceptions") }
+    }
     /// The desk differs from the current scene (shown as "· edited"). Not persisted.
     @Published var sceneEdited = false
     /// Persisted desk (groups), so groups survive a relaunch.
@@ -52,6 +56,7 @@ final class Preferences: ObservableObject {
         currentScene = d.string(forKey: "currentScene")
         groupHotkeysEnabled = d.object(forKey: "groupHotkeysEnabled") as? Bool ?? true
         stageManagerTurnedOff = d.bool(forKey: "stageManagerTurnedOff")
+        appExceptions = d.data(forKey: "appExceptions").flatMap { try? JSONDecoder().decode([AppException].self, from: $0) } ?? []
         spacesMode = SpacesMode(rawValue: d.string(forKey: "spacesMode") ?? "") ?? .shared
     }
 }

@@ -16,6 +16,7 @@ enum Features {
         SessionAutosave.install()
         SceneRelaunch.install()
         SceneEdited.install()
+        AppExceptionsService.install()
         CommandServer.shared.start()
         URLHandler.shared.install()
         LaneGuardService.shared.sweep(animated: false)
