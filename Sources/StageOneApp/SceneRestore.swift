@@ -18,8 +18,13 @@ enum SceneRestore {
     private static var undoScene: StageScene?
     private static var undoExpiry: Date?
 
+    /// When the last restore started; new-window placement (SO-043) holds off for a while
+    /// after it, because relaunched apps' windows are being placed by the scene.
+    private(set) static var lastRestoreAt: Date?
+
     @discardableResult
     static func restore(_ scene: StageScene, undoable: Bool = true, relaunch: Bool = true, quiet: Bool = false) -> Outcome {
+        lastRestoreAt = Date()
         let c = StageController.shared
         if undoable {
             undoScene = Scenes.capture(name: "Before restoring \(scene.name)")
