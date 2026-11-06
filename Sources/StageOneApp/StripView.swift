@@ -84,6 +84,9 @@ struct GroupTile: View {
             .overlay(alignment: .topLeading) {
                 if model.showNumbers && number <= 9 { NumberBadge(number: number) }
             }
+            .overlay(alignment: .bottomTrailing) {
+                if controller.hasFullscreen(group) { FullscreenBadge() }
+            }
             .overlay {
                 if model.dropTarget == group.id {
                     RoundedRectangle(cornerRadius: 10)
@@ -188,6 +191,17 @@ struct CompactTile: View {
         }
         .frame(width: 56, height: 56)
         .background(RoundedRectangle(cornerRadius: 12).fill(hover ? Theme.spotSoft : Theme.glass))
+        .overlay(alignment: .topTrailing) {
+            if controller.hasFullscreen(group) {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 15, height: 15)
+                    .background(Circle().fill(Theme.spot))
+                    .offset(x: 3, y: -3)
+                    .help("Full screen")
+            }
+        }
         .overlay {
             if model.dropTarget == group.id {
                 RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.spot, style: StrokeStyle(lineWidth: 2, dash: [5, 3]))
@@ -197,6 +211,19 @@ struct CompactTile: View {
         .onTapGesture { controller.switchTo(group.id) }
         .contextMenu { GroupMenu(group: group, controller: controller, rename: {}) }
         .help(group.name)
+    }
+}
+
+/// SO-014: marks a group holding a native full screen window, which Stage One leaves alone.
+struct FullscreenBadge: View {
+    var body: some View {
+        Text("Full screen")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(Theme.spot)
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(Capsule().fill(Theme.spotSoft))
+            .overlay(Capsule().strokeBorder(Theme.spot.opacity(0.35)))
+            .offset(x: 4, y: 4)
     }
 }
 

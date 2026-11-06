@@ -25,8 +25,14 @@ final class StageController: ObservableObject {
     var onWindowEvent: [(WindowEvent) -> Void] = []
     var onDeskChange: [() -> Void] = []
 
+    /// SO-014: per-Space groups. The desks of Spaces not showing, and the Space `desk` belongs to.
+    private var spaceDesks = SpaceDesks()
+    private var spaceKey: String?
+
     private init() {
         if let data = prefs.savedDesk, let saved = try? IPC.decode(Desk.self, data) { desk = saved }
+        if let data = prefs.savedSpaceDesks, let saved = try? IPC.decode(SpaceDesks.self, data) { spaceDesks = saved }
+        spaceKey = prefs.savedSpaceKey
     }
 
     // MARK: Lifecycle
@@ -38,7 +44,7 @@ final class StageController: ObservableObject {
         inventory.onEvent = { [weak self] e in self?.handle(e) }
         inventory.start()
         parking.reconcile(with: inventory)
-        let stale = desk.groups.isEmpty || desk.groups.allSatisfy({ $0.windowIDs.allSatisfy { inventory[$0] == nil } })
+        let stale = desk.groups.isEmpty || desk.groups.allSatisfy({ $0.windowIDs.allSatisfy { !inventory.aliveIDs.contains($0) } })
         if stale {
             desk = Desk()
             importWindowsByApp()
@@ -78,25 +84,88 @@ final class StageController: ObservableObject {
 
     private func deskChanged() {
         if let data = try? IPC.encode(desk) { prefs.savedDesk = data }
+        if prefs.spacesMode == .perSpace {
+            if let data = try? IPC.encode(spaceDesks) { prefs.savedSpaceDesks = data }
+            prefs.savedSpaceKey = spaceKey
+        }
         revision &+= 1
         onDeskChange.forEach { $0() }
     }
 
     private func inventoryChanged() {
-        let ids = inventory.windows.map(\.id)
+        let perSpace = prefs.spacesMode == .perSpace && Spaces.isAvailable
+        let newSpace = perSpace && followSpace()
+        var ids = inventory.windows.map(\.id)
+        if perSpace, let key = spaceKey, let sid = UInt64(key) {
+            // AX can list windows from other Spaces; only this Space's windows join its desk.
+            ids = ids.filter { Spaces.spaces(of: $0)?.contains(sid) ?? true }
+            spaceDesks.release(Set(ids))
+            spaceDesks.prune(alive: inventory.aliveIDs)
+        }
+        // Full screen windows join a group too, so the strip can show them (with a badge).
+        let full = inventory.fullscreen.keys.filter { !(perSpace && spaceDesks.contains($0)) }
         let before = desk
-        desk.sync(liveWindowIDs: ids)
+        desk.sync(liveWindowIDs: ids + full, aliveIDs: inventory.aliveIDs)
         // A window that opens while its group is off stage stays where it is (parked groups only gain
         // windows by drag or restore); sync puts new windows on stage.
-        if desk != before { deskChanged() } else { revision &+= 1 }
+        if newSpace && before.groups.isEmpty {
+            importWindowsByApp(only: Set(ids))
+        } else if desk != before || newSpace {
+            deskChanged()
+            if newSpace { enforceStage() }
+        } else {
+            revision &+= 1
+        }
+    }
+
+    // MARK: Spaces (SO-014)
+
+    /// Per-Space mode: when another Space shows, store this desk and bring out that Space's.
+    /// Full screen Spaces keep the desk that was showing. Returns true if the Space changed.
+    private func followSpace() -> Bool {
+        guard let sid = Spaces.active(), !Spaces.isFullscreen(sid) else { return false }
+        let key = String(sid)
+        guard key != spaceKey else { return false }
+        guard spaceKey != nil else { spaceKey = key; return false }  // the desk already is this Space's
+        desk = spaceDesks.switchSpace(current: desk, from: spaceKey, to: key)
+        spaceKey = key
+        return true
+    }
+
+    /// Settings changed between one set of groups and one per Space.
+    func spacesModeChanged() {
+        guard started else { return }
+        if prefs.spacesMode == .perSpace {
+            guard let sid = Spaces.active() else { return }
+            spaceDesks = SpaceDesks()
+            spaceKey = String(sid)
+            desk = spaceDesks.split(desk, current: String(sid)) { id in
+                // A window's Space, ignoring full screen ones (those stay with this desk).
+                guard let spaces = Spaces.spaces(of: id), !spaces.contains(sid),
+                      let other = spaces.first(where: { !Spaces.isFullscreen($0) }) else { return nil }
+                return String(other)
+            }
+        } else {
+            desk = spaceDesks.merge(into: desk)
+            spaceKey = nil
+            prefs.savedSpaceDesks = nil
+            prefs.savedSpaceKey = nil
+        }
+        deskChanged()
+        enforceStage()
+    }
+
+    /// True when a group holds a window in native full screen.
+    func hasFullscreen(_ group: StageGroup) -> Bool {
+        group.windowIDs.contains { inventory.isFullscreen($0) }
     }
 
     /// SO-003: one group per app, at most 8; extra apps join the last group.
-    func importWindowsByApp(maxGroups: Int = 8) {
+    func importWindowsByApp(maxGroups: Int = 8, only: Set<CGWindowID>? = nil) {
         var order: [String] = []
         var byApp: [String: [CGWindowID]] = [:]
         var names: [String: String] = [:]
-        for w in inventory.windows {
+        for w in inventory.windows where only?.contains(w.id) ?? true {
             if byApp[w.bundleID] == nil { order.append(w.bundleID) }
             byApp[w.bundleID, default: []].append(w.id)
             names[w.bundleID] = w.snapshot.appName
@@ -112,7 +181,8 @@ final class StageController: ObservableObject {
         }
         if d.groups.isEmpty { d.addGroup(named: "Desk") }
         // The front-most window's group goes on stage.
-        if let front = inventory.windows.first, let g = d.group(containing: front.id) { d.activeID = g.id }
+        if let front = inventory.windows.first(where: { only?.contains($0.id) ?? true }),
+           let g = d.group(containing: front.id) { d.activeID = g.id }
         desk = d
         deskChanged()
         enforceStage()
@@ -131,7 +201,9 @@ final class StageController: ObservableObject {
     func enforceStage() {
         guard started else { return }
         let activeIDs = Set(desk.active?.windowIDs ?? [])
-        for w in inventory.windows {
+        let grouped = Set(desk.groups.flatMap(\.windowIDs))
+        // Windows outside this desk (another Space's, in per-Space mode) are left alone.
+        for w in inventory.windows where grouped.contains(w.id) {
             if activeIDs.contains(w.id) {
                 if parking.isParked(w.id) { parking.unpark(w) }
             } else if !parking.isParked(w.id) {
@@ -200,6 +272,12 @@ final class StageController: ObservableObject {
     /// Brings the on-stage windows to the front, front window last, and activates its app.
     func raiseActive() {
         let ws = (desk.active?.windowIDs ?? []).compactMap { inventory[$0] }
+        // A group that only holds a full screen window: show it, which moves to its Space.
+        if ws.isEmpty, let f = (desk.active?.windowIDs ?? []).compactMap({ inventory.fullscreen[$0] }).first {
+            AX.raise(f.element)
+            f.app?.activate()
+            return
+        }
         for w in ws.reversed() { AX.raise(w.element) }
         ws.first?.app?.activate()
     }
@@ -317,7 +395,10 @@ final class StageController: ObservableObject {
 
     // MARK: Lookups for UI
 
-    func windows(of group: StageGroup) -> [TrackedWindow] { group.windowIDs.compactMap { inventory[$0] } }
+    /// Windows to preview for a group, full screen ones included (they're never moved).
+    func windows(of group: StageGroup) -> [TrackedWindow] {
+        group.windowIDs.compactMap { inventory[$0] ?? inventory.fullscreen[$0] }
+    }
 
     func appIcons(of group: StageGroup, limit: Int = 2) -> [NSImage] {
         var seen = Set<pid_t>(), icons: [NSImage] = []

@@ -97,8 +97,10 @@ public struct Desk: Codable, Sendable, Equatable {
     }
 
     /// Adds unknown windows to the active group (new windows open on stage) and drops closed ones.
-    public mutating func sync(liveWindowIDs: [UInt32]) {
-        let live = Set(liveWindowIDs)
+    /// `aliveIDs` (SO-014) are windows that still exist but can't be managed right now, such as
+    /// windows on another Space or in native full screen: they keep their group.
+    public mutating func sync(liveWindowIDs: [UInt32], aliveIDs: Set<UInt32> = []) {
+        let live = Set(liveWindowIDs).union(aliveIDs)
         for i in groups.indices { groups[i].windowIDs.removeAll { !live.contains($0) } }
         let known = Set(groups.flatMap(\.windowIDs))
         let new = liveWindowIDs.filter { !known.contains($0) }
