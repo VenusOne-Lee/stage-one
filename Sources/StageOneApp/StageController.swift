@@ -46,6 +46,7 @@ final class StageController: ObservableObject {
         inventory.start()
         parking.reconcile(with: inventory)
         let stale = desk.groups.isEmpty || desk.groups.allSatisfy({ $0.windowIDs.allSatisfy { !inventory.aliveIDs.contains($0) } })
+        if !stale { desk.dropEmptyGroups() }
         if stale {
             desk = Desk()
             importWindowsByApp()
@@ -106,9 +107,22 @@ final class StageController: ObservableObject {
         // Full screen windows join a group too, so the strip can show them (with a badge).
         let full = inventory.fullscreen.keys.filter { !(perSpace && spaceDesks.contains($0)) }
         let before = desk
-        desk.sync(liveWindowIDs: ids + full, aliveIDs: inventory.aliveIDs)
-        // A window that opens while its group is off stage stays where it is (parked groups only gain
-        // windows by drag or restore); sync puts new windows on stage.
+        var apps: [CGWindowID: String] = [:], names: [String: String] = [:]
+        for w in inventory.windows + Array(inventory.fullscreen.values) {
+            apps[w.id] = w.bundleID
+            names[w.bundleID] = w.snapshot.appName
+        }
+        // A new window from the app the user is in gets that app's stage (its group, or a new one);
+        // anything else joins the stage. While switching or restoring, everything joins the stage.
+        let restoring = SceneRestore.lastRestoreAt.map { Date().timeIntervalSince($0) < 8 } ?? false
+        let front = isSwitching || restoring ? nil : NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        let ownStage = desk.sync(liveWindowIDs: ids + full, aliveIDs: inventory.aliveIDs,
+                                 apps: apps, names: names, frontApp: front)
+        if let ownStage, !newSpace {
+            deskChanged()
+            switchTo(ownStage)
+            return
+        }
         if newSpace && before.groups.isEmpty {
             importWindowsByApp(only: Set(ids))
         } else if desk != before || newSpace {

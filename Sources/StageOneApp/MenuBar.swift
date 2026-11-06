@@ -42,6 +42,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(item("Rewind", #selector(rewind)))
         menu.addItem(item("View", #selector(showView)))
         menu.addItem(item("Rules", #selector(rules)))
+        menu.addItem(item("Tidy into one group per app", #selector(tidyByApp)))
         menu.addItem(item("Command bar  \(LayoutShortcut.commandBar.shortcut(in: prefs.layoutShortcuts).display)", #selector(commandBar)))
         // SO-110.
         let meeting = item("Meeting mode  \(LayoutShortcut.meetingMode.shortcut(in: prefs.layoutShortcuts).display)", #selector(toggleMeeting))
@@ -99,6 +100,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func rewind() { Panels.shared.show(.rewind) }
     @objc private func showView() { Panels.shared.show(.view) }
     @objc private func rules() { Panels.shared.show(.rules) }
+    @objc private func tidyByApp() {
+        StageController.shared.importWindowsByApp(maxGroups: 12)
+        Toast.shared.show("Tidied into one group per app", duration: 3)
+    }
     @objc private func commandBar() { Panels.shared.show(.commandBar) }
     @objc private func toggleMeeting() { MeetingMode.shared.toggle() }
     @objc private func sendFeedback() { FeedbackService.send() }
