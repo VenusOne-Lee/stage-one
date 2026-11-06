@@ -10,6 +10,15 @@ A free, open source macOS window manager. Window groups live in a side strip and
 
 MIT licensed.
 
+## First launch
+
+Builds that aren't notarised by Apple (every CI build, and releases made without the signing secrets in [docs/RELEASING.md](docs/RELEASING.md)) are ad-hoc signed, so macOS 15 stops the first launch with **"Stage One.app" Not Opened** and only a Done button. That's Gatekeeper, not a broken download. To open it once:
+
+1. Drag Stage One to Applications and try to open it. Press **Done**.
+2. Open **System Settings › Privacy & Security**, scroll to Security, and press **Open Anyway** next to "Stage One.app was blocked". Confirm with your password.
+
+Or in Terminal: `xattr -dr com.apple.quarantine "/Applications/Stage One.app"`, then open it as usual. macOS remembers the choice, and updates install without asking again.
+
 ## Meeting mode
 
 ⌃⌥M, the menu bar or the command bar turns it on, and by default it turns itself on while you share your screen (macOS Screen Sharing, Zoom, Teams, Meet in the browser). Windows of private apps (Mail, Messages, Slack and WhatsApp to start with; change them in Settings › Privacy) get a frosted cover reading "Hidden while you share", and the strip hides their previews. A scene can turn it on too.
