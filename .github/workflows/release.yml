@@ -1,11 +1,17 @@
 name: Release
 
 # Push a tag like v0.1.0 (or v0.1.0-beta.1 for a prerelease). See docs/RELEASING.md.
+# Or run it from the Actions tab with a tag name: it releases main and creates the tag.
 # With signing secrets: Developer ID + hardened runtime, notarised and stapled.
 # Without them: ad-hoc signed, same artifacts.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to create and release, like v0.1.0"
+        required: true
 
 permissions:
   contents: write
@@ -39,8 +45,11 @@ jobs:
           swift --version
 
       - name: Version
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          TAG="${GITHUB_REF#refs/tags/}"
+          TAG="${INPUT_TAG:-${GITHUB_REF#refs/tags/}}"
+          if [[ "$TAG" != v* ]]; then echo "Tag must start with v, got $TAG"; exit 1; fi
           VERSION="${TAG#v}"
           echo "TAG=$TAG" >> "$GITHUB_ENV"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
@@ -141,6 +150,8 @@ jobs:
           if [ -f "dist/Stage One.alfredworkflow" ]; then files+=("dist/Stage One.alfredworkflow"); fi
           flags=(--title "Stage One $VERSION" --generate-notes)
           if [ "$PRERELEASE" = "1" ]; then flags+=(--prerelease); fi
+          # Started by hand: create the tag on the commit we built.
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then flags+=(--target "$GITHUB_SHA"); fi
           # Not notarised (no signing secrets): lead the notes with how to get past Gatekeeper.
           if ! xcrun stapler validate "dist/Stage One.app" >/dev/null 2>&1; then
             cat > "$RUNNER_TEMP/notes.md" <<'MD'

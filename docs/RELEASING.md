@@ -64,6 +64,9 @@ git tag v0.2.0-beta.1     # anything with a "-" becomes a prerelease
 git push origin v0.1.0
 ```
 
+No terminal? Open **Actions › Release › Run workflow**, keep the branch on `main`, type the tag
+(`v0.1.0`) and run it. The workflow builds `main` and creates the tag with the release.
+
 `CFBundleShortVersionString` comes from the tag; `CFBundleVersion` is the commit count on
 the tagged commit, which is what Sparkle compares, so always tag a commit on `main`.
 
