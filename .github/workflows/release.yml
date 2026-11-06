@@ -141,6 +141,14 @@ jobs:
           if [ -f "dist/Stage One.alfredworkflow" ]; then files+=("dist/Stage One.alfredworkflow"); fi
           flags=(--title "Stage One $VERSION" --generate-notes)
           if [ "$PRERELEASE" = "1" ]; then flags+=(--prerelease); fi
+          # Not notarised (no signing secrets): lead the notes with how to get past Gatekeeper.
+          if ! xcrun stapler validate "dist/Stage One.app" >/dev/null 2>&1; then
+            cat > "$RUNNER_TEMP/notes.md" <<'MD'
+          ### First launch
+          This release isn't notarised by Apple yet, so macOS stops the first launch with **"Stage One.app" Not Opened**. Drag Stage One to Applications, try to open it and press **Done**, then go to **System Settings › Privacy & Security** and press **Open Anyway**. Or run `xattr -dr com.apple.quarantine "/Applications/Stage One.app"` in Terminal. You only do this once.
+          MD
+            flags+=(--notes-file "$RUNNER_TEMP/notes.md")
+          fi
           gh release create "$TAG" "${files[@]}" "${flags[@]}"
 
       - uses: actions/upload-artifact@v4
