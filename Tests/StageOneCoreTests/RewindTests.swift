@@ -36,3 +36,20 @@ final class RewindTests: XCTestCase {
         XCTAssertEqual(RewindPolicy.date(fromFileName: name), now)
     }
 }
+
+/// SO-061: "Since then".
+extension RewindTests {
+    func testDiff() {
+        func w(_ b: String, _ t: String) -> StageScene.Window { .init(bundleId: b, title: t, document: nil, frame: [0, 0, 10, 10]) }
+        func scene(_ groups: [(String, [StageScene.Window])]) -> StageScene {
+            StageScene(name: "s", displays: [], groups: groups.map { .init(name: $0.0, color: "#ef6f2e", display: nil, layout: .free, windows: $0.1) }, active: 0)
+        }
+        let then = scene([("Code", [w("com.a", "main.swift"), w("com.b", "Inbox")]), ("Docs", [w("com.c", "Spec")])])
+        let now = scene([("Code", [w("com.a", "main.swift"), w("com.d", "Figma")])])
+        let d = SnapshotDiff.between(then: then, now: now)
+        XCTAssertEqual(d.added, ["Figma"])
+        XCTAssertEqual(d.gone.map(\.window.title), ["Inbox", "Spec"])
+        XCTAssertEqual(d.gone.map(\.group), ["Code", "Docs"])
+        XCTAssertTrue(SnapshotDiff.between(then: now, now: now).isEmpty)
+    }
+}
