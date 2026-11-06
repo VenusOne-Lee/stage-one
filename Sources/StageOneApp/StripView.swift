@@ -197,6 +197,9 @@ struct CompactTile: View {
     @ObservedObject var controller: StageController
     @ObservedObject var model: StripModel
     @State private var hover = false
+    /// SO-034: a preview popover after a short hover.
+    @State private var preview = false
+    @State private var hoverWork: DispatchWorkItem?
 
     var body: some View {
         let icons = controller.appIcons(of: group)
@@ -224,13 +227,73 @@ struct CompactTile: View {
                 RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.spot, style: StrokeStyle(lineWidth: 2, dash: [5, 3]))
             }
         }
-        .onHover { hover = $0 }
+        .onHover { h in
+            hover = h
+            hoverWork?.cancel()
+            if h {
+                let work = DispatchWorkItem { preview = true }
+                hoverWork = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: work)
+            } else {
+                preview = false
+            }
+        }
+        .popover(isPresented: $preview, arrowEdge: popoverEdge) {
+            CompactPreview(group: group, controller: controller)
+        }
         .onTapGesture {
+            preview = false
             // SO-025: ⌥-click adds the group to the stage, like Stage Manager's shift-click.
             if NSEvent.modifierFlags.contains(.option) { controller.addToStage(group.id) } else { controller.switchTo(group.id) }
         }
         .contextMenu { GroupMenu(group: group, controller: controller, rename: {}) }
         .help("\(group.name) · ⌥-click to add to the stage")
+    }
+}
+
+extension CompactTile {
+    /// The popover opens toward the stage.
+    var popoverEdge: Edge {
+        switch model.edge {
+        case .left: return .trailing
+        case .right: return .leading
+        case .top: return .bottom
+        case .bottom: return .top
+        }
+    }
+}
+
+/// SO-034: what a compact tile shows on hover: the group's windows and name.
+struct CompactPreview: View {
+    let group: StageGroup
+    @ObservedObject var controller: StageController
+
+    var body: some View {
+        let windows = controller.windows(of: group)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Circle().fill(Color(hexString: group.color)).frame(width: 8, height: 8)
+                Text(group.name).font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.ink)
+                Spacer(minLength: 8)
+                Text(windows.count == 1 ? "1 window" : "\(windows.count) windows")
+                    .font(.system(size: 11)).foregroundStyle(Theme.ink3)
+            }
+            if windows.isEmpty {
+                Text("Empty").font(.caption).foregroundStyle(Theme.ink3)
+            } else {
+                HStack(spacing: 8) {
+                    ForEach(windows.prefix(3), id: \.id) { w in
+                        VStack(spacing: 4) {
+                            WindowPreview(window: w, thumbnails: controller.thumbnails).frame(width: 132, height: 84)
+                            Text(w.title.isEmpty ? w.snapshot.appName : w.title)
+                                .font(.system(size: 10.5)).foregroundStyle(Theme.ink2).lineLimit(1).frame(width: 132)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .background(Color(hex: 0xfffdfb))
     }
 }
 
