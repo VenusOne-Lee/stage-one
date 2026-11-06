@@ -109,6 +109,7 @@ struct SceneCard: View {
         .contextMenu {
             Button("Restore") { SceneRestore.restore(scene) }
             Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([SceneStore.shared.url(for: scene)]) }
+            Button("Export…") { SceneFiles.export(scene) }
             Divider()
             Button("Delete") { SceneStore.shared.delete(scene) }
         }
