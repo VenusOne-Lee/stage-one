@@ -43,6 +43,9 @@ cp Resources/AppIcon.icns "$APP/Contents/Resources/"
 find "$BIN" -maxdepth 1 -name "*.bundle" -exec cp -R {} "$APP/Contents/Resources/" \;
 if [ -d integrations ]; then cp -R integrations "$APP/Contents/Resources/"; fi
 
+# SO-072: App Intents metadata (Focus filter, intents). Best effort, never fails the build.
+scripts/appintents-metadata.sh "$APP"
+
 # Sparkle.framework: SwiftPM links it but does not bundle it. Prefer the copy next to the
 # products, fall back to the downloaded xcframework slice.
 SPARKLE_FW="$(find "$BIN" .build/artifacts -name Sparkle.framework -type d -not -path "*/Sparkle.framework/*" 2>/dev/null | head -1 || true)"
