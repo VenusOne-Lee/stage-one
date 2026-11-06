@@ -48,6 +48,13 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(item("Settings…", #selector(settings), key: ","))
         let pause = item(prefs.paused ? "Resume Stage One" : "Pause Stage One", #selector(togglePause))
         menu.addItem(pause)
+        // SO-135: Help › Send feedback.
+        let help = NSMenuItem(title: "Help", action: nil, keyEquivalent: "")
+        let helpMenu = NSMenu(title: "Help")
+        helpMenu.addItem(item("Send feedback…", #selector(sendFeedback)))
+        helpMenu.addItem(item("Stage One on GitHub", #selector(openGitHub)))
+        help.submenu = helpMenu
+        menu.addItem(help)
         menu.addItem(.separator())
 
         let quit = NSMenuItem(title: "Quit Stage One", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -89,6 +96,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func showView() { Panels.shared.show(.view) }
     @objc private func rules() { Panels.shared.show(.rules) }
     @objc private func commandBar() { Panels.shared.show(.commandBar) }
+    @objc private func sendFeedback() { FeedbackService.send() }
+    @objc private func openGitHub() {
+        if let url = URL(string: "https://github.com/\(Feedback.repository)") { NSWorkspace.shared.open(url) }
+    }
 
     @objc private func settings() { MenuBarController.openSettings() }
 
