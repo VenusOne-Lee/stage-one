@@ -61,11 +61,17 @@ final class RuleService: ObservableObject {
         let store = SceneStore.shared
         store.reload()
         guard let scene = RuleEngine.scene(for: event, in: store.scenes) else { return }
+        run(scene, reason: Self.reason(event), trigger: event.trigger)
+    }
+
+    /// Restores `scene` after the 5-second countdown with Skip, and logs the run.
+    /// SO-072: the Focus filter calls this directly with the scene the Focus chose.
+    func run(_ scene: StageScene, reason: String, trigger: RuleTrigger) {
+        guard StageController.shared.isRunning, !Preferences.shared.paused else { return }
         let prefs = Preferences.shared
         // Already on stage and unchanged: nothing to do.
         if prefs.currentScene == scene.name && !prefs.sceneEdited { return }
         pending?.cancel()
-        let trigger = event.trigger
         let work = DispatchWorkItem {
             MainActor.assumeIsolated {
                 RuleService.shared.pending = nil
@@ -74,7 +80,7 @@ final class RuleService: ObservableObject {
             }
         }
         pending = work
-        Toast.shared.show("\(Self.reason(event)). Restoring “\(scene.name)” in 5s…",
+        Toast.shared.show("\(reason). Restoring “\(scene.name)” in 5s…",
                           action: (title: "Skip", run: {
                               work.cancel()
                               RuleService.shared.pending = nil
