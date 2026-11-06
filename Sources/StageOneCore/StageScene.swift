@@ -78,7 +78,37 @@ public struct StageScene: Codable, Sendable, Equatable, Identifiable {
     public struct Options: Codable, Sendable, Equatable {
         public var dnd: Bool
         public var meetingMode: Bool
-        public init(dnd: Bool = false, meetingMode: Bool = false) { self.dnd = dnd; self.meetingMode = meetingMode }
+        /// SO-055: hide apps with no window in the scene.
+        public var hideOthers: Bool
+        /// SO-055: quit apps with no window in the scene (Stage One asks first).
+        public var closeOthers: Bool
+        /// SO-055: path of an image to use as the desktop picture.
+        public var wallpaper: String?
+
+        public init(dnd: Bool = false, meetingMode: Bool = false, hideOthers: Bool = false,
+                    closeOthers: Bool = false, wallpaper: String? = nil) {
+            self.dnd = dnd; self.meetingMode = meetingMode; self.hideOthers = hideOthers
+            self.closeOthers = closeOthers; self.wallpaper = wallpaper
+        }
+
+        // Scenes saved before SO-055 only have dnd and meetingMode.
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            dnd = try c.decodeIfPresent(Bool.self, forKey: .dnd) ?? false
+            meetingMode = try c.decodeIfPresent(Bool.self, forKey: .meetingMode) ?? false
+            hideOthers = try c.decodeIfPresent(Bool.self, forKey: .hideOthers) ?? false
+            closeOthers = try c.decodeIfPresent(Bool.self, forKey: .closeOthers) ?? false
+            wallpaper = try c.decodeIfPresent(String.self, forKey: .wallpaper)
+        }
+
+        /// True when restoring changes something beyond windows.
+        public var isEmpty: Bool { !dnd && !meetingMode && !hideOthers && !closeOthers && wallpaper == nil }
+    }
+
+    /// SO-055: apps that have no window in this scene, from those running.
+    public func appsNotInScene(running: [String]) -> [String] {
+        let inScene = Set(groups.flatMap { $0.windows.map(\.bundleId) })
+        return running.filter { !inScene.contains($0) }
     }
 
     public init(name: String, savedAt: Date = Date(), displays: [Display], groups: [Group], active: Int,

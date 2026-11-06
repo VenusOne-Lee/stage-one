@@ -10,6 +10,8 @@ struct SaveSceneBox: View {
     @State private var trigger: SceneTrigger = .none
     @State private var dnd = false
     @State private var meeting = false
+    @State private var others: OtherApps = .leave
+    @State private var wallpaper = false
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -35,6 +37,19 @@ struct SaveSceneBox: View {
             }
             .font(.system(size: 12))
             .foregroundStyle(Theme.ink2)
+            // SO-055: what else restoring does.
+            HStack(spacing: 8) {
+                Picker("Other apps", selection: $others) {
+                    ForEach(OtherApps.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.menu)
+                .fixedSize()
+                Spacer()
+                Toggle("Use this wallpaper", isOn: $wallpaper).toggleStyle(.checkbox).tint(Theme.spot)
+                    .help("Restoring the scene sets the desktop picture you have now.")
+            }
+            .font(.system(size: 12))
+            .foregroundStyle(Theme.ink2)
             HStack {
                 let c = StageController.shared
                 Text("\(c.desk.groups.filter { !$0.windowIDs.isEmpty }.count) groups · \(c.inventory.windows.count) windows")
@@ -54,7 +69,23 @@ struct SaveSceneBox: View {
     }
 
     private func save() {
-        if Scenes.save(name: name, options: .init(dnd: dnd, meetingMode: meeting), rule: trigger.rule) != nil { onDone() }
+        let picture = wallpaper ? NSScreen.main.flatMap { NSWorkspace.shared.desktopImageURL(for: $0)?.path } : nil
+        let options = StageScene.Options(dnd: dnd, meetingMode: meeting, hideOthers: others == .hide,
+                                         closeOthers: others == .quit, wallpaper: picture)
+        if Scenes.save(name: name, options: options, rule: trigger.rule) != nil { onDone() }
+    }
+}
+
+/// SO-055: apps with no window in the scene.
+enum OtherApps: String, CaseIterable {
+    case leave, hide, quit
+
+    var title: String {
+        switch self {
+        case .leave: return "Leave other apps"
+        case .hide: return "Hide other apps"
+        case .quit: return "Quit other apps (asks)"
+        }
     }
 }
 
