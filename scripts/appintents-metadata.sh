@@ -21,9 +21,13 @@ cat > "$WORK/protocols.json" <<'JSON'
 JSON
 
 HOST_ARCH="$(uname -m)"
+# The processor reads the linker's dependency info to see that AppIntents.framework is linked.
+DEPINFO="$PWD/$WORK/StageOne_dependency_info.dat"
+rm -f "$DEPINFO"
 swift build -c release --arch "$HOST_ARCH" --product StageOne --scratch-path "$WORK/build" \
     -Xswiftc -emit-const-values \
     -Xswiftc -Xfrontend -Xswiftc -const-gather-protocols-file -Xswiftc -Xfrontend -Xswiftc "$PWD/$WORK/protocols.json" \
+    -Xlinker -dependency_info -Xlinker "$DEPINFO" \
     || warn "const-value build failed"
 
 find "$WORK/build" -name "*.swiftconstvalues" -path "*StageOneApp*" > "$WORK/constvals.txt"
@@ -31,6 +35,8 @@ find "$WORK/build" -name "*.swiftconstvalues" -path "*StageOneApp*" > "$WORK/con
 find "$PWD/Sources/StageOneApp" -name "*.swift" > "$WORK/sources.txt"
 BIN="$(find "$WORK/build" -path "*release/StageOne" -type f | head -1)"
 [ -n "$BIN" ] || warn "const-value build produced no binary"
+[ -f "$DEPINFO" ] || warn "the linker wrote no dependency info"
+echo "App Intents: $(wc -l < "$WORK/constvals.txt" | tr -d ' ') const-values file(s), binary $BIN"
 
 TOOLCHAIN="$(dirname "$(dirname "$(dirname "$(xcrun -f swiftc)")")")"
 XCODE_VERSION="$(xcodebuild -version 2>/dev/null | awk 'NR==2 {print $3}')"
@@ -45,7 +51,7 @@ xcrun appintentsmetadataprocessor \
     --output "$OUT" \
     --target-triple "$HOST_ARCH-apple-macos15.0" \
     --binary-file "$BIN" \
-    --dependency-file "$WORK/StageOne.d" \
+    --dependency-file "$DEPINFO" \
     --stringsdata-file "$WORK/ExtractedAppShortcutsMetadata.stringsdata" \
     --source-file-list "$WORK/sources.txt" \
     --swift-const-vals-list "$WORK/constvals.txt" \
