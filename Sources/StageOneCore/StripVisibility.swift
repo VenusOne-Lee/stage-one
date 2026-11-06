@@ -50,8 +50,13 @@ public struct StripVisibility: Sendable, Equatable {
         return shown
     }
 
+    /// "Can overlap" hides only while a window covers the lane; "Auto-hide" always (SO-033).
     func hides(mode: OverlapMode, windowsTouchLane: Bool) -> Bool {
-        mode == .overlap && windowsTouchLane
+        switch mode {
+        case .reserve: return false
+        case .overlap: return windowsTouchLane
+        case .autohide: return true
+        }
     }
 
     private mutating func reset() -> Bool {
