@@ -51,6 +51,11 @@ public final class WindowInventory: ObservableObject {
     /// Windows in front-to-back order.
     @Published public private(set) var windows: [TrackedWindow] = []
     public private(set) var byID: [CGWindowID: TrackedWindow] = [:]
+    /// SO-014: windows in native full screen. Never moved or parked; kept while they exist,
+    /// even when their full screen Space isn't showing.
+    @Published public private(set) var fullscreen: [CGWindowID: TrackedWindow] = [:]
+    /// Every app window that exists on any Space (from CGWindowList), managed or not.
+    public private(set) var aliveIDs: Set<CGWindowID> = []
 
     /// Called for every window event after the inventory has been updated.
     public var onEvent: ((WindowEvent) -> Void)?
@@ -117,6 +122,9 @@ public final class WindowInventory: ObservableObject {
 
     public subscript(id: CGWindowID) -> TrackedWindow? { byID[id] }
 
+    /// True for a window in native full screen (SO-014).
+    public func isFullscreen(_ id: CGWindowID) -> Bool { fullscreen[id] != nil }
+
     public var snapshots: [UInt32: WindowSnapshot] {
         Dictionary(uniqueKeysWithValues: windows.map { ($0.id, $0.snapshot) })
     }
@@ -177,16 +185,20 @@ public final class WindowInventory: ObservableObject {
         // CG order is front to back; keep it so stacking order is known.
         var order: [CGWindowID] = []
         var pids = Set<pid_t>()
+        var alive = Set<CGWindowID>()
         for w in info {
             guard (w[kCGWindowLayer as String] as? Int) == 0,
                   let id = w[kCGWindowNumber as String] as? CGWindowID,
                   let pid = w[kCGWindowOwnerPID as String] as? pid_t, pid != ownPID else { continue }
+            alive.insert(id)
             if let alpha = w[kCGWindowAlpha as String] as? Double, alpha <= 0 { continue }
             order.append(id)
             pids.insert(pid)
         }
 
         var found: [CGWindowID: TrackedWindow] = [:]
+        // Full screen windows stay known while they exist, even when AX can't see their Space.
+        var full = fullscreen.filter { alive.contains($0.key) }
         for pid in pids {
             guard let app = NSRunningApplication(processIdentifier: pid), app.activationPolicy == .regular,
                   let bundle = app.bundleIdentifier, !ignoredBundleIDs.contains(bundle) else { continue }
@@ -200,6 +212,14 @@ public final class WindowInventory: ObservableObject {
                 let display = Displays.screen(for: frame).map(Displays.stableID(of:)) ?? ""
                 let snap = WindowSnapshot(windowID: id, pid: pid, bundleID: bundle, appName: app.localizedName ?? bundle,
                                           title: title, document: doc, frame: frame, displayID: display)
+                if AX.isFullscreen(el) {
+                    let w = byID[id] ?? full[id] ?? TrackedWindow(id: id, pid: pid, element: el, snapshot: snap)
+                    w.snapshot = snap
+                    full[id] = w
+                    observers[pid]?.watch(window: el)
+                    continue
+                }
+                full[id] = nil
                 if let existing = byID[id] {
                     existing.snapshot = snap
                     found[id] = existing
@@ -214,6 +234,8 @@ public final class WindowInventory: ObservableObject {
         let sorted = found.values.sorted { (rank[$0.id] ?? .max) < (rank[$1.id] ?? .max) }
         byID = found
         windows = sorted
+        aliveIDs = alive
+        if Set(full.keys) != Set(fullscreen.keys) { fullscreen = full } else { for (k, v) in full { fullscreen[k]?.snapshot = v.snapshot } }
         onChange?()
     }
 
@@ -250,11 +272,18 @@ public final class WindowInventory: ObservableObject {
                 byID[id] = nil
                 windows.removeAll { $0.id == id }
                 onEvent?(.destroyed(id))
+            } else if let id = fullscreen.first(where: { CFEqual($0.value.element, element) })?.key {
+                fullscreen[id] = nil
+                onEvent?(.destroyed(id))
             }
             scheduleRescan()
         case kAXWindowMovedNotification:
             if let id = refresh(element: element) { onEvent?(.moved(id)) }
         case kAXWindowResizedNotification:
+            // Entering or leaving full screen arrives as a resize; rescan so the window
+            // moves between `windows` and `fullscreen`.
+            let id = AX.windowID(of: element)
+            if let id, AX.isFullscreen(element) != (fullscreen[id] != nil) { scheduleRescan() }
             if let id = refresh(element: element) { onEvent?(.resized(id)) }
         case kAXTitleChangedNotification:
             if let id = refresh(element: element) { onEvent?(.titleChanged(id)) }

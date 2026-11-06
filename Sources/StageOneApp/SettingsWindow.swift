@@ -226,12 +226,25 @@ private struct GeneralPane: View {
                 }
             }
             StageCard {
+                SettingRow(title: "Spaces", detail: spacesDetail) {
+                    Picker("", selection: $prefs.spacesMode) {
+                        Text("Same groups").tag(SpacesMode.shared)
+                        Text("Groups per Space").tag(SpacesMode.perSpace)
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(width: 260)
+                    .disabled(!Spaces.isAvailable)
+                }
+            }
+            StageCard {
                 SettingRow(title: "Setup", detail: "Walk through permissions and Stage Manager again.") {
                     Button("Run setup again") { OnboardingWindow.shared.show() }
                         .buttonStyle(StageButtonStyle(kind: .ghost))
                 }
             }
         }
+        .onChange(of: prefs.spacesMode) { _, _ in StageController.shared.spacesModeChanged() }
         .onAppear {
             stageManagerOn = AppleStageManager.isOn
             let enabled = SMAppService.mainApp.status == .enabled
@@ -263,6 +276,14 @@ private struct GeneralPane: View {
         let now = AppleStageManager.isOn
         prefs.stageManagerTurnedOff = !now
         if stageManagerOn != now { stageManagerOn = now }
+    }
+
+    private var spacesDetail: String {
+        guard Spaces.isAvailable else { return "This version of macOS doesn't let Stage One tell Spaces apart." }
+        switch prefs.spacesMode {
+        case .shared: return "Every Space shows the same groups. Full screen windows are left alone."
+        case .perSpace: return "Each Space keeps its own groups and its own stage. Full screen windows are left alone."
+        }
     }
 }
 
