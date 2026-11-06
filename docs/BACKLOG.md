@@ -318,8 +318,8 @@ Acceptance:
 - [x] Double-clicking a scene file imports it.
 ### SO-121 · MCP server · P2 · M
 Acceptance:
-- [ ] `stage mcp` runs over stdio with these tools: `list_scenes`, `restore_scene`, `save_scene`, `list_groups`, `arrange`, `rewind_points`.
-- [ ] Every tool that changes the desk asks for confirmation in a Stage One toast unless "Allow without asking" is set for that tool.
+- [x] `stage mcp` runs over stdio with these tools: `list_scenes`, `restore_scene`, `save_scene`, `list_groups`, `arrange`, `rewind_points`.
+- [x] Every tool that changes the desk asks for confirmation in a Stage One toast unless "Allow without asking" is set for that tool.
 ### SO-122 · Shortcuts actions polish · P2 · S
 Acceptance:
 - [ ] Every intent has a parameter summary, and output types can be chained.

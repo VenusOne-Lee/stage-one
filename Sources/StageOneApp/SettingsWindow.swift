@@ -625,6 +625,8 @@ private struct PermissionRow: View {
 // MARK: - Integrations
 
 private struct IntegrationsPane: View {
+    @ObservedObject var prefs = Preferences.shared
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             StageCard {
@@ -632,7 +634,12 @@ private struct IntegrationsPane: View {
                 Divider().opacity(0.5)
                 AlfredRow()
                 Divider().opacity(0.5)
-                IntegrationRow(title: "Raycast", detail: "An extension with the same commands.")
+                SettingRow(title: "Raycast", detail: "Restore, save, show a group, arrange and rewind. The extension is in the repo under integrations/raycast.") {
+                    Button("Open") {
+                        NSWorkspace.shared.open(URL(string: "https://github.com/VenusOne-Lee/stage-one/tree/main/integrations/raycast")!)
+                    }
+                    .buttonStyle(StageButtonStyle(kind: .ghost))
+                }
                 Divider().opacity(0.5)
                 SettingRow(title: "Spotlight and Shortcuts", detail: "Scenes show up in Spotlight. Restore, save, rewind, show a group and arrange are in the Shortcuts app.") {
                     Text("Built in")
@@ -643,7 +650,44 @@ private struct IntegrationsPane: View {
                         .background(Capsule().fill(Theme.spotSoft))
                 }
             }
-            Note(text: "The Raycast extension arrives in an upcoming version.")
+            MCPCard(prefs: prefs)
+        }
+    }
+}
+
+/// SO-121: `stage mcp` for AI assistants, and which tools may move windows without asking.
+private struct MCPCard: View {
+    @ObservedObject var prefs: Preferences
+    @State private var copied = false
+
+    private var config: String {
+        #"{ "mcpServers": { "stage-one": { "command": "\#(CLIInstaller.target)", "args": ["mcp"] } } }"#
+    }
+
+    var body: some View {
+        StageCard {
+            SettingRow(title: "AI assistants (MCP)", detail: "`stage mcp` lets assistants like Claude list, save and restore scenes. It needs the command line tool.") {
+                Button(copied ? "Copied" : "Copy config") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(config, forType: .string)
+                    copied = true
+                }
+                .buttonStyle(StageButtonStyle(kind: .ghost))
+            }
+            Text(config).font(Theme.mono).foregroundStyle(Theme.ink2).textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+            Divider().opacity(0.5)
+            Text("Tools that move windows ask you in a toast first. Allow without asking:")
+                .font(.system(size: 12)).foregroundStyle(Theme.ink2)
+            ForEach(MCPServer.askingTools, id: \.self) { tool in
+                Toggle(MCPConfirm.title(tool), isOn: Binding(
+                    get: { prefs.mcpAllowed.contains(tool) },
+                    set: { on in
+                        prefs.mcpAllowed.removeAll { $0 == tool }
+                        if on { prefs.mcpAllowed.append(tool) }
+                    }))
+                .toggleStyle(.checkbox).tint(Theme.spot).font(.system(size: 13))
+            }
         }
     }
 }
@@ -682,22 +726,6 @@ private struct AlfredRow: View {
             }
             .buttonStyle(StageButtonStyle(kind: .spot))
             .disabled(Self.workflow == nil)
-        }
-    }
-}
-
-private struct IntegrationRow: View {
-    let title: String
-    let detail: String
-
-    var body: some View {
-        SettingRow(title: title, detail: detail) {
-            Text("Coming soon")
-                .font(.system(size: 11.5, weight: .semibold))
-                .foregroundStyle(Theme.ink2)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(Capsule().fill(Color.black.opacity(0.06)))
         }
     }
 }
