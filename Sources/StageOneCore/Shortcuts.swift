@@ -50,9 +50,13 @@ public enum KeyNames {
     public static func name(_ keyCode: UInt32) -> String { table[keyCode] ?? "Key \(keyCode)" }
 }
 
-/// SO-042: the layout shortcuts, all customisable.
+/// SO-042: the layout shortcuts, all customisable. SO-080 adds the command bar's, which
+/// shares the storage and the conflict check.
 public enum LayoutShortcut: String, Codable, Sendable, CaseIterable {
-    case leftHalf, rightHalf, fill, grid
+    case leftHalf, rightHalf, fill, grid, commandBar
+
+    /// The window layout shortcuts (everything but the command bar).
+    public static var layouts: [LayoutShortcut] { allCases.filter { $0 != .commandBar } }
 
     public var title: String {
         switch self {
@@ -60,10 +64,11 @@ public enum LayoutShortcut: String, Codable, Sendable, CaseIterable {
         case .rightHalf: return "Right half"
         case .fill: return "Fill the stage"
         case .grid: return "Grid"
+        case .commandBar: return "Command bar"
         }
     }
 
-    /// ⌃⌥← → ↑ for halves and fill, ⌃⌥G for grid.
+    /// ⌃⌥← → ↑ for halves and fill, ⌃⌥G for grid, ⌃Space for the command bar.
     public var defaultShortcut: Shortcut {
         let m = Shortcut.control | Shortcut.option
         switch self {
@@ -71,6 +76,8 @@ public enum LayoutShortcut: String, Codable, Sendable, CaseIterable {
         case .rightHalf: return Shortcut(keyCode: 124, modifiers: m)
         case .fill: return Shortcut(keyCode: 126, modifiers: m)
         case .grid: return Shortcut(keyCode: 5, modifiers: m)
+        // ⌘K clashes with many apps; ⌃Space is free unless several input sources are on.
+        case .commandBar: return Shortcut(keyCode: 49, modifiers: Shortcut.control)
         }
     }
 

@@ -388,7 +388,7 @@ private struct ShortcutsPane: View {
             }
             StageCard {
                 Text("Layouts").font(.system(size: 13.5, weight: .semibold)).foregroundStyle(Theme.ink)
-                ForEach(Array(LayoutShortcut.allCases.enumerated()), id: \.offset) { i, action in
+                ForEach(Array(LayoutShortcut.layouts.enumerated()), id: \.offset) { i, action in
                     if i > 0 { Divider().opacity(0.5) }
                     HStack {
                         Text(action.title).font(.system(size: 13.5))
@@ -397,6 +397,14 @@ private struct ShortcutsPane: View {
                     }
                 }
                 Note(text: "Click a shortcut and press new keys. It needs ⌃, ⌥ or ⌘. Esc cancels, ⌫ goes back to the default.")
+            }
+            StageCard {
+                HStack {
+                    Text("Command bar").font(.system(size: 13.5))
+                    Spacer()
+                    ShortcutRecorder(action: .commandBar, prefs: prefs)
+                }
+                Note(text: "Search groups, scenes, layouts, rewind points, rules and every window. ⌘K clashes with many apps, so the default is ⌃Space.")
             }
             Toggle("Group hotkeys (⌥1 – ⌥9)", isOn: $prefs.groupHotkeysEnabled)
                 .toggleStyle(.switch)

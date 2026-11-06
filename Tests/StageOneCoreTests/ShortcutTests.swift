@@ -8,6 +8,9 @@ final class ShortcutTests: XCTestCase {
         XCTAssertEqual(LayoutShortcut.rightHalf.defaultShortcut.display, "⌃⌥→")
         XCTAssertEqual(LayoutShortcut.fill.defaultShortcut.display, "⌃⌥↑")
         XCTAssertEqual(LayoutShortcut.grid.defaultShortcut.display, "⌃⌥G")
+        XCTAssertEqual(LayoutShortcut.commandBar.defaultShortcut.display, "⌃Space")
+        XCTAssertFalse(LayoutShortcut.layouts.contains(.commandBar))
+        XCTAssertEqual(Set(LayoutShortcut.allCases.map { $0.defaultShortcut }).count, LayoutShortcut.allCases.count)
         XCTAssertEqual(Shortcut(keyCode: 1, modifiers: Shortcut.command | Shortcut.shift).display, "⇧⌘S")
     }
 

@@ -26,6 +26,10 @@ final class LayoutHotKeys {
     }
 
     static func perform(_ action: LayoutShortcut) {
+        if action == .commandBar {
+            Panels.shared.show(.commandBar)
+            return
+        }
         let c = StageController.shared
         guard c.isRunning else { return }
         if action == .grid {
