@@ -53,10 +53,10 @@ public enum KeyNames {
 /// SO-042: the layout shortcuts, all customisable. SO-080 adds the command bar's, which
 /// shares the storage and the conflict check.
 public enum LayoutShortcut: String, Codable, Sendable, CaseIterable {
-    case leftHalf, rightHalf, fill, grid, commandBar
+    case leftHalf, rightHalf, fill, grid, commandBar, meetingMode
 
-    /// The window layout shortcuts (everything but the command bar).
-    public static var layouts: [LayoutShortcut] { allCases.filter { $0 != .commandBar } }
+    /// The window layout shortcuts (everything but the command bar and Meeting mode).
+    public static var layouts: [LayoutShortcut] { allCases.filter { $0 != .commandBar && $0 != .meetingMode } }
 
     public var title: String {
         switch self {
@@ -65,10 +65,11 @@ public enum LayoutShortcut: String, Codable, Sendable, CaseIterable {
         case .fill: return "Fill the stage"
         case .grid: return "Grid"
         case .commandBar: return "Command bar"
+        case .meetingMode: return "Meeting mode"
         }
     }
 
-    /// ⌃⌥← → ↑ for halves and fill, ⌃⌥G for grid, ⌃Space for the command bar.
+    /// ⌃⌥← → ↑ for halves and fill, ⌃⌥G for grid, ⌃Space for the command bar, ⌃⌥M for Meeting mode.
     public var defaultShortcut: Shortcut {
         let m = Shortcut.control | Shortcut.option
         switch self {
@@ -78,6 +79,8 @@ public enum LayoutShortcut: String, Codable, Sendable, CaseIterable {
         case .grid: return Shortcut(keyCode: 5, modifiers: m)
         // ⌘K clashes with many apps; ⌃Space is free unless several input sources are on.
         case .commandBar: return Shortcut(keyCode: 49, modifiers: Shortcut.control)
+        // SO-110: ⌃⌥M (the prototype's ⌘⇧M is taken by Chrome and others).
+        case .meetingMode: return Shortcut(keyCode: 46, modifiers: m)
         }
     }
 

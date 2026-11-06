@@ -30,6 +30,10 @@ final class LayoutHotKeys {
             Panels.shared.show(.commandBar)
             return
         }
+        if action == .meetingMode {
+            MeetingMode.shared.toggle()
+            return
+        }
         let c = StageController.shared
         guard c.isRunning else { return }
         if action == .grid {

@@ -46,6 +46,9 @@ enum CommandBar {
             out.append(PaletteItem(.time, Palette.rewindTitle(snap.date, now: now),
                                    hint: snap.date.formatted(.relative(presentation: .named)), action: .rewind(snap.date)))
         }
+        let meeting = LayoutShortcut.meetingMode.shortcut(in: Preferences.shared.layoutShortcuts).display
+        out.append(PaletteItem(.share, MeetingMode.shared.on ? "Turn Meeting mode off" : "Turn Meeting mode on",
+                               hint: meeting, action: .toggleMeetingMode))
         out.append(PaletteItem(.rules, "Edit rules", action: .openRules))
         for s in store.scenes {
             guard let r = s.rule, r.enabled else { continue }
@@ -84,6 +87,8 @@ enum CommandBar {
             }
         case .openRules:
             Panels.shared.show(.rules)
+        case .toggleMeetingMode:
+            MeetingMode.shared.toggle()
         case .focusWindow(let id):
             guard c.isRunning else { return }
             if let g = c.desk.groups.first(where: { $0.windowIDs.contains(id) }), g.id != c.desk.activeID {
