@@ -32,7 +32,14 @@ enum SceneRestore {
         }
         let outcome = apply(scene)
         if !quiet {
-            let detail = outcome.missing.isEmpty ? nil : "\(outcome.missing.count) window\(outcome.missing.count == 1 ? "" : "s") not open yet"
+            var notes: [String] = []
+            if !outcome.missing.isEmpty { notes.append("\(outcome.missing.count) window\(outcome.missing.count == 1 ? "" : "s") not open yet") }
+            // SO-056: say what happened to windows from displays that aren't connected.
+            if folded > 0 {
+                let gone = DisplayFold.missing(scene.displays, connected: Set(NSScreen.screens.map(Displays.stableID(of:)))).count
+                notes.append("Saved on \(scene.displays.count) displays, \(gone) not connected: \(folded) window\(folded == 1 ? "" : "s") moved here at the same size")
+            }
+            let detail = notes.isEmpty ? nil : notes.joined(separator: ". ")
             let undo: (title: String, run: () -> Void)? = undoable ? (title: "Undo", run: { SceneRestore.undo() }) : nil
             Toast.shared.show("Restored “\(scene.name)”", detail: detail, action: undo, duration: undoable ? 30 : 4)
         }
@@ -53,10 +60,14 @@ enum SceneRestore {
         Toast.shared.show("Put the desk back", duration: 2)
     }
 
+    /// Windows the last `apply` moved off a display that isn't connected (SO-056).
+    private(set) static var folded = 0
+
     /// Core of restore; returns windows that couldn't be matched.
     @discardableResult
     static func apply(_ scene: StageScene) -> Outcome {
         let c = StageController.shared
+        folded = 0
         let flat: [(group: Int, window: StageScene.Window)] = scene.groups.enumerated().flatMap { gi, g in g.windows.map { (group: gi, window: $0) } }
         let live = c.inventory.windows.map(\.snapshot)
         let result = IdentityMatcher.match(saved: flat.map(\.window), live: live)
@@ -64,7 +75,9 @@ enum SceneRestore {
         var desk = Desk()
         var groupIDs: [UUID] = []
         for g in scene.groups {
-            var group = StageGroup(name: g.name, color: g.color, layout: g.layout, displayID: g.display)
+            // A group pinned to a display that isn't connected folds onto the others.
+            let pinned = g.display.flatMap { Displays.screen(withID: $0) == nil ? nil : $0 }
+            var group = StageGroup(name: g.name, color: g.color, layout: g.layout, displayID: pinned)
             group.windowIDs = []
             desk.groups.append(group)
             groupIDs.append(group.id)
@@ -109,7 +122,15 @@ enum SceneRestore {
 
     /// SO-035: map a saved frame from the usable area it was saved in to today's.
     static func reflowed(_ frame: CGRect, scene: StageScene, display: String?) -> CGRect {
-        let saved = scene.displays.first { $0.id == display } ?? scene.displays.first
+        // SO-056: the window's own saved display (its group's, or the one it sat on).
+        let own = display.flatMap { id in scene.displays.first { $0.id == id } } ?? DisplayFold.display(of: frame, in: scene.displays)
+        if scene.displays.count > 1, let own, Displays.screen(withID: own.id) == nil,
+           let main = ScreenLayouts.current()?.usableFrame {
+            folded += 1
+            let old = own.usable.map { CGRect(array: $0) } ?? CGRect(array: own.frame)
+            return DisplayFold.fold(frame, from: old, to: main)
+        }
+        let saved = own ?? scene.displays.first
         let now = (display.flatMap { Displays.screen(withID: $0) }).flatMap { ScreenLayouts.current(for: $0) }
             ?? ScreenLayouts.layout(containing: frame) ?? ScreenLayouts.current()
         guard let now else { return frame }
