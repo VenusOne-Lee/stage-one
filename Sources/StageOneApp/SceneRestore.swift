@@ -41,6 +41,7 @@ enum SceneRestore {
             Preferences.shared.sceneEdited = false
         }
         if relaunch, !outcome.missing.isEmpty { relaunchMissing?(scene, outcome.missing) }
+        if !quiet { SceneOptionsService.apply(scene) }
         c.captureAll()
         return outcome
     }

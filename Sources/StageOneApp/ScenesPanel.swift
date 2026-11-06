@@ -77,6 +77,9 @@ struct SceneCard: View {
                     if let rule = scene.rule { Chip(text: ruleTitle(rule)) }
                     if scene.options.dnd { Chip(text: "Do Not Disturb") }
                     if scene.options.meetingMode { Chip(text: "Meeting mode") }
+                    if scene.options.hideOthers { Chip(text: "Hides other apps") }
+                    if scene.options.closeOthers { Chip(text: "Quits other apps") }
+                    if scene.options.wallpaper != nil { Chip(text: "Wallpaper") }
                 }
             }
             Spacer()
