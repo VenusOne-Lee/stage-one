@@ -6,6 +6,7 @@ import AppKit
 enum Features {
     static func start() {
         GroupHotKeys.shared.install()
+        LayoutHotKeys.shared.install()
         DragToGroup.shared.install()
         StripPlacement.shared.install()
         LaneGuardService.shared.install()
@@ -25,6 +26,7 @@ enum Features {
 
     static func stop() {
         GroupHotKeys.shared.uninstall()
+        LayoutHotKeys.shared.uninstall()
         DragToGroup.shared.uninstall()
         StripPlacement.shared.uninstall()
         LaneGuardService.shared.uninstall()

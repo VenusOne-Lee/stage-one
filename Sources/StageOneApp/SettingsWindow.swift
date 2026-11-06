@@ -369,19 +369,15 @@ private struct StripDockPane: View {
 private struct ShortcutsPane: View {
     @ObservedObject var prefs: Preferences
 
-    private static let rows: [(keys: String, action: String)] = [
+    private static let fixed: [(keys: String, action: String)] = [
         ("⌥1 – ⌥9", "Switch to group 1 to 9"),
         ("⌘⇧S", "Save scene"),
-        ("⌃⌥←", "Left half"),
-        ("⌃⌥→", "Right half"),
-        ("⌃⌥↑", "Fill the stage"),
-        ("⌃⌥G", "Grid"),
     ]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             StageCard {
-                ForEach(Array(Self.rows.enumerated()), id: \.offset) { i, row in
+                ForEach(Array(Self.fixed.enumerated()), id: \.offset) { i, row in
                     if i > 0 { Divider().opacity(0.5) }
                     HStack {
                         Text(row.action).font(.system(size: 13.5))
@@ -390,11 +386,114 @@ private struct ShortcutsPane: View {
                     }
                 }
             }
+            StageCard {
+                Text("Layouts").font(.system(size: 13.5, weight: .semibold)).foregroundStyle(Theme.ink)
+                ForEach(Array(LayoutShortcut.allCases.enumerated()), id: \.offset) { i, action in
+                    if i > 0 { Divider().opacity(0.5) }
+                    HStack {
+                        Text(action.title).font(.system(size: 13.5))
+                        Spacer()
+                        ShortcutRecorder(action: action, prefs: prefs)
+                    }
+                }
+                Note(text: "Click a shortcut and press new keys. It needs ⌃, ⌥ or ⌘. Esc cancels, ⌫ goes back to the default.")
+            }
             Toggle("Group hotkeys (⌥1 – ⌥9)", isOn: $prefs.groupHotkeysEnabled)
                 .toggleStyle(.switch)
                 .font(.system(size: 13))
-            Note(text: "Custom shortcuts are coming in a later version.")
         }
+    }
+}
+
+/// Swallows key presses while a shortcut is being recorded.
+@MainActor
+private enum ShortcutCapture {
+    private static var monitor: Any?
+    private static var onKey: ((UInt16, NSEvent.ModifierFlags) -> Void)?
+
+    static func begin(_ handler: @escaping (UInt16, NSEvent.ModifierFlags) -> Void) {
+        end()
+        onKey = handler
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { e in
+            let code = e.keyCode, flags = e.modifierFlags
+            MainActor.assumeIsolated { ShortcutCapture.onKey?(code, flags) }
+            return nil
+        }
+    }
+
+    static func end() {
+        if let monitor { NSEvent.removeMonitor(monitor) }
+        monitor = nil
+        onKey = nil
+    }
+}
+
+/// SO-042: click, then press the new keys.
+private struct ShortcutRecorder: View {
+    let action: LayoutShortcut
+    @ObservedObject var prefs: Preferences
+    @State private var recording = false
+    @State private var problem: String?
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if let problem {
+                Text(problem).font(.system(size: 11)).foregroundStyle(Theme.danger)
+            }
+            Button { recording ? stop() : start() } label: {
+                Text(recording ? "Type shortcut…" : action.shortcut(in: prefs.layoutShortcuts).display)
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(recording ? Theme.spot : Theme.ink)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(recording ? Theme.spotSoft : Color.black.opacity(0.06)))
+                    .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(recording ? Theme.spot : Color.clear))
+            }
+            .buttonStyle(.plain)
+        }
+        .onDisappear { stop() }
+    }
+
+    private func start() {
+        problem = nil
+        recording = true
+        // The hotkeys would fire instead of reaching the recorder.
+        LayoutHotKeys.shared.uninstall()
+        ShortcutCapture.begin { code, flags in handle(code, flags) }
+    }
+
+    private func stop() {
+        ShortcutCapture.end()
+        if recording {
+            recording = false
+            if StageController.shared.isRunning { LayoutHotKeys.shared.install() }
+        }
+    }
+
+    private func handle(_ keyCode: UInt16, _ modifierFlags: NSEvent.ModifierFlags) {
+        let code = UInt32(keyCode)
+        let flags = modifierFlags.intersection(.deviceIndependentFlagsMask)
+        var mods: UInt32 = 0
+        if flags.contains(.command) { mods |= Shortcut.command }
+        if flags.contains(.shift) { mods |= Shortcut.shift }
+        if flags.contains(.option) { mods |= Shortcut.option }
+        if flags.contains(.control) { mods |= Shortcut.control }
+        if mods == 0 && code == 53 { stop(); return }                       // Esc
+        if mods == 0 && (code == 51 || code == 117) {                        // ⌫ resets
+            prefs.layoutShortcuts[action.rawValue] = nil
+            stop(); return
+        }
+        let s = Shortcut(keyCode: code, modifiers: mods)
+        guard s.isUsable else { problem = "Add ⌃, ⌥ or ⌘"; return }
+        if let other = LayoutShortcut.conflict(for: s, except: action, overrides: prefs.layoutShortcuts) {
+            problem = "Used by \(other.title)"
+            return
+        }
+        problem = nil
+        prefs.layoutShortcuts[action.rawValue] = s == action.defaultShortcut ? nil : s
+        stop()
     }
 }
 
