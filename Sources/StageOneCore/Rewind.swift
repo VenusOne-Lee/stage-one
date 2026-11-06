@@ -53,3 +53,31 @@ public enum RewindPolicy {
         return f.date(from: String(fixed))
     }
 }
+
+/// SO-061: what changed between a snapshot and now.
+public struct SnapshotDiff: Sendable, Equatable {
+    /// Titles of windows open now that weren't then.
+    public var added: [String]
+    /// Windows that were open then and are gone now, with the group they were in.
+    public var gone: [Gone]
+
+    public struct Gone: Sendable, Equatable {
+        public var window: StageScene.Window
+        public var group: String
+    }
+
+    public var isEmpty: Bool { added.isEmpty && gone.isEmpty }
+
+    public static func between(then: StageScene, now: StageScene) -> SnapshotDiff {
+        func key(_ w: StageScene.Window) -> String { w.bundleId + "\u{1F}" + w.title }
+        let thenKeys = Set(then.groups.flatMap { $0.windows.map(key) })
+        let nowKeys = Set(now.groups.flatMap { $0.windows.map(key) })
+        var seen = Set<String>()
+        let added = now.groups.flatMap(\.windows).filter { !thenKeys.contains(key($0)) && seen.insert(key($0)).inserted }
+            .map { $0.title.isEmpty ? ($0.appName ?? $0.bundleId) : $0.title }
+        seen = []
+        let gone = then.groups.flatMap { g in g.windows.map { Gone(window: $0, group: g.name) } }
+            .filter { !nowKeys.contains(key($0.window)) && seen.insert(key($0.window)).inserted }
+        return SnapshotDiff(added: added, gone: gone)
+    }
+}
