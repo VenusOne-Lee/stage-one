@@ -19,6 +19,7 @@ enum Features {
         SceneEdited.install()
         AppExceptionsService.install()
         StripAutoHide.shared.install()
+        RewindStore.shared.install()
         CommandServer.shared.start()
         URLHandler.shared.install()
         LaneGuardService.shared.sweep(animated: false)
@@ -35,5 +36,6 @@ enum Features {
         SaveSceneHotKey.uninstall()
         CommandServer.shared.stop()
         StripAutoHide.shared.uninstall()
+        RewindStore.shared.uninstall()
     }
 }
