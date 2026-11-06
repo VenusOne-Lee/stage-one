@@ -41,7 +41,9 @@ plutil -lint "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/"
 # Bundle resources SwiftPM produced (fonts, images), if any.
 find "$BIN" -maxdepth 1 -name "*.bundle" -exec cp -R {} "$APP/Contents/Resources/" \;
-if [ -d integrations ]; then cp -R integrations "$APP/Contents/Resources/"; fi
+# SO-092: the Alfred workflow, in the app (Settings › Integrations › Add to Alfred) and in dist/.
+scripts/make-alfred.sh dist
+cp "dist/Stage One.alfredworkflow" "$APP/Contents/Resources/"
 
 # SO-072: App Intents metadata (Focus filter, intents). Best effort, never fails the build.
 scripts/appintents-metadata.sh "$APP"

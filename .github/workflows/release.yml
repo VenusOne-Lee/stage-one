@@ -138,6 +138,7 @@ jobs:
         run: |
           files=("dist/StageOne-$VERSION.dmg" "dist/StageOne-$VERSION.zip" dist/SHA256SUMS dist/stage-one.rb)
           if [ -f dist/appcast.xml ]; then files+=(dist/appcast.xml); fi
+          if [ -f "dist/Stage One.alfredworkflow" ]; then files+=("dist/Stage One.alfredworkflow"); fi
           flags=(--title "Stage One $VERSION" --generate-notes)
           if [ "$PRERELEASE" = "1" ]; then flags+=(--prerelease); fi
           gh release create "$TAG" "${files[@]}" "${flags[@]}"
