@@ -322,7 +322,7 @@ Acceptance:
 - [x] Every tool that changes the desk asks for confirmation in a Stage One toast unless "Allow without asking" is set for that tool.
 ### SO-122 · Shortcuts actions polish · P2 · S
 Acceptance:
-- [ ] Every intent has a parameter summary, and output types can be chained.
+- [x] Every intent has a parameter summary, and output types can be chained.
 
 ### E14 Quality, release and growth
 ### SO-130 · Performance budget · P0 · S

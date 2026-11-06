@@ -7,13 +7,16 @@ struct GroupEntity: AppEntity {
     static let defaultQuery = GroupQuery()
 
     let id: UUID
-    let name: String
-    let windowCount: Int
+    /// SO-122: properties later actions in a shortcut can read.
+    @Property(title: "Name") var name: String
+    @Property(title: "Windows") var windowCount: Int
+    @Property(title: "On stage") var onStage: Bool
 
-    init(_ g: StageGroup) {
+    init(_ g: StageGroup, onStage: Bool) {
         id = g.id
         name = g.name
         windowCount = g.windowIDs.count
+        self.onStage = onStage
     }
 
     var displayRepresentation: DisplayRepresentation {
@@ -22,23 +25,24 @@ struct GroupEntity: AppEntity {
 }
 
 struct GroupQuery: EntityStringQuery {
-    private func groups() async -> [StageGroup] {
-        await MainActor.run { StageController.shared.desk.groups }
+    private func groups() async -> (all: [StageGroup], active: UUID?) {
+        await MainActor.run { (StageController.shared.desk.groups, StageController.shared.desk.activeID) }
     }
 
     func entities(for identifiers: [UUID]) async throws -> [GroupEntity] {
-        let all = await groups()
-        return identifiers.compactMap { id in all.first { $0.id == id } }.map(GroupEntity.init)
+        let (all, active) = await groups()
+        return identifiers.compactMap { id in all.first { $0.id == id } }.map { GroupEntity($0, onStage: $0.id == active) }
     }
 
     func entities(matching string: String) async throws -> [GroupEntity] {
-        let all = await groups()
+        let (all, active) = await groups()
         let q = string.trimmingCharacters(in: .whitespaces)
-        return (q.isEmpty ? all : Fuzzy.rank(all, query: q, key: \.name)).map(GroupEntity.init)
+        return (q.isEmpty ? all : Fuzzy.rank(all, query: q, key: \.name)).map { GroupEntity($0, onStage: $0.id == active) }
     }
 
     func suggestedEntities() async throws -> [GroupEntity] {
-        await groups().map(GroupEntity.init)
+        let (all, active) = await groups()
+        return all.map { GroupEntity($0, onStage: $0.id == active) }
     }
 }
 

@@ -8,11 +8,18 @@ struct SceneEntity: AppEntity {
 
     /// Scenes are identified by name; names are unique on disk (one file per slug).
     let id: String
-    let windowCount: Int
+    /// SO-122: properties later actions in a shortcut can read.
+    @Property(title: "Name") var name: String
+    @Property(title: "Windows") var windowCount: Int
+    @Property(title: "Saved") var savedAt: Date
+    @Property(title: "Has a rule") var hasRule: Bool
 
     init(_ scene: StageScene) {
         id = scene.name
+        name = scene.name
         windowCount = SceneCatalog.windowCount(scene)
+        savedAt = scene.savedAt
+        hasRule = scene.rule?.enabled ?? false
     }
 
     var displayRepresentation: DisplayRepresentation {
