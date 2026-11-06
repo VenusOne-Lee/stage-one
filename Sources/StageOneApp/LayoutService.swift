@@ -16,7 +16,35 @@ enum LayoutService {
         StageController.shared.layoutFrame = { id, group in
             frames(for: group)[id]
         }
+        StageController.shared.onWindowEvent.append { e in
+            if case .created(let id) = e { LayoutService.windowOpened(id) }
+        }
         LayoutBar.shared.install()
+    }
+
+    /// SO-043: a new window on stage slots into the stage's layout; on a Free stage it
+    /// cascades from the front window. Waits a moment so the app has placed it first.
+    static func windowOpened(_ id: CGWindowID) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            MainActor.assumeIsolated {
+                let c = StageController.shared
+                guard installed, c.isRunning, !c.isSwitching,
+                      SceneRestore.lastRestoreAt.map({ Date().timeIntervalSince($0) > 8 }) ?? true,
+                      let w = c.inventory[id], !c.parking.isParked(id),
+                      let g = c.desk.active, g.windowIDs.contains(id) else { return }
+                if g.layout != .free {
+                    arrangeActive()
+                    return
+                }
+                guard let area = usableArea(for: g) else { return }
+                let front = g.windowIDs.first { $0 != id && c.inventory[$0] != nil && !c.parking.isParked($0) }
+                    .flatMap { c.inventory[$0]?.frame }
+                // Only step a window the app opened on top of another one, or outside the stage.
+                let covered = front.map { abs($0.minX - w.frame.minX) < 12 && abs($0.minY - w.frame.minY) < 12 } ?? false
+                guard covered || !area.contains(w.frame) else { return }
+                c.mover.animate(w, to: Cascade.frame(for: w.frame.size, after: front, in: area), duration: 0.3)
+            }
+        }
     }
 
     static func uninstall() {

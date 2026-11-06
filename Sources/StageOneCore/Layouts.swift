@@ -84,6 +84,22 @@ public enum LayoutEngine {
     }
 }
 
+/// SO-043: where a new window goes on a Free stage: down and right of the front window,
+/// starting over at the top left of the area when it would run off.
+public enum Cascade {
+    public static let step: CGFloat = 28
+
+    public static func frame(for size: CGSize, after front: CGRect?, in area: CGRect, step: CGFloat = step) -> CGRect {
+        let inset = area.insetBy(dx: LayoutEngine.gap, dy: LayoutEngine.gap)
+        let w = min(size.width, inset.width), h = min(size.height, inset.height)
+        var origin = front.map { CGPoint(x: $0.minX + step, y: $0.minY + step) } ?? CGPoint(x: inset.minX, y: inset.minY)
+        if origin.x + w > area.maxX || origin.y + h > area.maxY || origin.x < area.minX || origin.y < area.minY {
+            origin = CGPoint(x: inset.minX, y: inset.minY)
+        }
+        return CGRect(origin: origin, size: CGSize(width: w, height: h)).rounded()
+    }
+}
+
 /// Edge snapping (SO-041).
 public enum SnapZone: Sendable, Equatable {
     case leftHalf, rightHalf, fill
