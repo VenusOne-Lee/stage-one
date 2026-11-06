@@ -262,7 +262,7 @@ Acceptance:
 - [x] Uses EventKit, with permission asked only when this rule is first made. Rules match an event title keyword or a calendar.
 ### SO-074 · Wi-Fi rules · P2 · S
 Acceptance:
-- [ ] Uses CoreWLAN for the network name. Explains that macOS needs Location access to read it.
+- [x] Uses CoreWLAN for the network name. Explains that macOS needs Location access to read it.
 
 ### E9 Command bar
 ### SO-080 · ⌘K palette · P1 · M

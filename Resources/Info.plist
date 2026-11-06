@@ -18,6 +18,8 @@
     <key>NSHighResolutionCapable</key><true/>
     <key>NSCalendarsFullAccessUsageDescription</key><string>Calendar rules restore a scene when a matching event starts. Stage One only reads event titles and start times, on this Mac.</string>
     <key>NSCalendarsUsageDescription</key><string>Calendar rules restore a scene when a matching event starts. Stage One only reads event titles and start times, on this Mac.</string>
+    <key>NSLocationUsageDescription</key><string>macOS only shares the Wi-Fi network name with apps that have Location access. Stage One uses it for Wi-Fi rules and never reads where you are.</string>
+    <key>NSLocationWhenInUseUsageDescription</key><string>macOS only shares the Wi-Fi network name with apps that have Location access. Stage One uses it for Wi-Fi rules and never reads where you are.</string>
     <key>NSHumanReadableCopyright</key><string>MIT licensed. Free and open source.</string>
     <key>SUFeedURL</key><string>https://github.com/VenusOne-Lee/stage-one/releases/latest/download/appcast.xml</string>
     <!-- Replaced by scripts/build-app.sh from SPARKLE_ED_PUBLIC_KEY. Left as is, Sparkle stays off. -->
