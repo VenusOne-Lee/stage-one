@@ -23,6 +23,10 @@ final class Preferences: ObservableObject {
     @Published var stageManagerTurnedOff: Bool { didSet { d.set(stageManagerTurnedOff, forKey: "stageManagerTurnedOff") } }
     /// SO-014: one set of groups for every Space, or one per Space.
     @Published var spacesMode: SpacesMode { didSet { d.set(spacesMode.rawValue, forKey: "spacesMode") } }
+    /// SO-042: layout shortcuts the user changed, by `LayoutShortcut` raw value.
+    @Published var layoutShortcuts: [String: Shortcut] {
+        didSet { d.set(try? JSONEncoder().encode(layoutShortcuts), forKey: "layoutShortcuts") }
+    }
     /// SO-015: apps Stage One leaves alone (their windows float above the stage).
     @Published var appExceptions: [AppException] {
         didSet { d.set(try? JSONEncoder().encode(appExceptions), forKey: "appExceptions") }
@@ -56,6 +60,7 @@ final class Preferences: ObservableObject {
         currentScene = d.string(forKey: "currentScene")
         groupHotkeysEnabled = d.object(forKey: "groupHotkeysEnabled") as? Bool ?? true
         stageManagerTurnedOff = d.bool(forKey: "stageManagerTurnedOff")
+        layoutShortcuts = d.data(forKey: "layoutShortcuts").flatMap { try? JSONDecoder().decode([String: Shortcut].self, from: $0) } ?? [:]
         appExceptions = d.data(forKey: "appExceptions").flatMap { try? JSONDecoder().decode([AppException].self, from: $0) } ?? []
         spacesMode = SpacesMode(rawValue: d.string(forKey: "spacesMode") ?? "") ?? .shared
     }

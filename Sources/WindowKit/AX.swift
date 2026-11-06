@@ -76,6 +76,17 @@ public enum AX {
         return role == kAXWindowRole && subrole == kAXStandardWindowSubrole
     }
 
+    /// The CGWindowID of the frontmost app's focused window.
+    @MainActor
+    public static func focusedWindowID() -> CGWindowID? {
+        guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
+        let el = AXUIElementCreateApplication(app.processIdentifier)
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(el, kAXFocusedWindowAttribute as CFString, &value) == .success, let v = value,
+              CFGetTypeID(v) == AXUIElementGetTypeID() else { return nil }
+        return windowID(of: v as! AXUIElement)
+    }
+
     public static func isMinimized(_ element: AXUIElement) -> Bool { bool(element, kAXMinimizedAttribute) ?? false }
     public static func isFullscreen(_ element: AXUIElement) -> Bool { bool(element, "AXFullScreen") ?? false }
 }
