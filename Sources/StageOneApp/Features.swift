@@ -21,6 +21,7 @@ enum Features {
         StripAutoHide.shared.install()
         RewindStore.shared.install()
         RuleService.shared.install()
+        DisplayWatcher.install()
         CommandServer.shared.start()
         URLHandler.shared.install()
         LaneGuardService.shared.sweep(animated: false)
@@ -39,5 +40,6 @@ enum Features {
         StripAutoHide.shared.uninstall()
         RewindStore.shared.uninstall()
         RuleService.shared.uninstall()
+        DisplayWatcher.uninstall()
     }
 }

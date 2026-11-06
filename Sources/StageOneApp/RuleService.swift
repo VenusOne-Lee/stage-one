@@ -11,7 +11,6 @@ final class RuleService: ObservableObject {
     @Published private(set) var log: [RuleRun] = []
     private var tokens: [(NotificationCenter, NSObjectProtocol)] = []
     private var clock: Timer?
-    private var displays: Set<String> = []
     private var pending: DispatchWorkItem?
     private var installed = false
 
@@ -23,15 +22,10 @@ final class RuleService: ObservableObject {
     func install() {
         guard !installed else { return }
         installed = true
-        displays = Set(NSScreen.screens.map(Displays.stableID(of:)))
         let ws = NSWorkspace.shared.notificationCenter
         tokens.append((ws, ws.addObserver(forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main) { n in
             let bundle = (n.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.bundleIdentifier
             MainActor.assumeIsolated { if let bundle { RuleService.shared.post(.appLaunched(bundle)) } }
-        }))
-        let nc = NotificationCenter.default
-        tokens.append((nc, nc.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { _ in
-            MainActor.assumeIsolated { RuleService.shared.screensChanged() }
         }))
         scheduleClock()
     }
@@ -44,15 +38,6 @@ final class RuleService: ObservableObject {
         pending?.cancel()
         pending = nil
         installed = false
-    }
-
-    /// Display triggers (SO-071 moves these to the CoreGraphics reconfiguration callback).
-    func screensChanged() {
-        let now = Set(NSScreen.screens.map(Displays.stableID(of:)))
-        let added = now.subtracting(displays), removed = displays.subtracting(now)
-        displays = now
-        removed.sorted().forEach { post(.displayDisconnected($0)) }
-        added.sorted().forEach { post(.displayConnected($0)) }
     }
 
     /// Fires at the start of every minute for time-of-day rules.
