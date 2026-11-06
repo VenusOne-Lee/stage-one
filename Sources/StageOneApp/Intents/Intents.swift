@@ -28,7 +28,7 @@ struct RestoreSceneIntent: AppIntent {
     init(scene: SceneEntity) { self.scene = scene }
 
     @MainActor
-    func perform() async throws -> some IntentResult & ProvidesDialog {
+    func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<SceneEntity> {
         try StageOneIntentError.requireRunning()
         let store = SceneStore.shared
         store.reload()
@@ -37,7 +37,7 @@ struct RestoreSceneIntent: AppIntent {
         }
         let outcome = SceneRestore.restore(s)
         let missing = outcome.missing.isEmpty ? "" : " \(outcome.missing.count) still opening."
-        return .result(dialog: "Restored \(s.name).\(missing)")
+        return .result(value: SceneEntity(s), dialog: "Restored \(s.name).\(missing)")
     }
 }
 
@@ -69,12 +69,18 @@ struct RewindToIntent: AppIntent {
 
     static var parameterSummary: some ParameterSummary { Summary("Rewind the desk to \(\.$time)") }
 
+    /// Returns the time of the snapshot it went back to.
     @MainActor
-    func perform() async throws -> some IntentResult & ProvidesDialog {
+    func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<Date> {
         try StageOneIntentError.requireRunning()
-        let reply = RewindStore.shared.rewind(to: time)
-        guard reply.ok else { throw StageOneIntentError(message: reply.message) }
-        return .result(dialog: "\(reply.message)")
+        let store = RewindStore.shared
+        store.reload()
+        let dates = store.snapshots.map(\.date)
+        let reply = store.rewind(to: time)
+        guard reply.ok, let i = RewindPolicy.target(for: time, in: dates, now: Date()) else {
+            throw StageOneIntentError(message: reply.message)
+        }
+        return .result(value: dates[i], dialog: "\(reply.message)")
     }
 }
 
@@ -91,14 +97,14 @@ struct ShowGroupIntent: AppIntent {
     init(group: GroupEntity) { self.group = group }
 
     @MainActor
-    func perform() async throws -> some IntentResult {
+    func perform() async throws -> some IntentResult & ReturnsValue<GroupEntity> {
         try StageOneIntentError.requireRunning()
         let c = StageController.shared
-        guard c.desk.groups.contains(where: { $0.id == group.id }) else {
+        guard let g = c.desk.groups.first(where: { $0.id == group.id }) else {
             throw StageOneIntentError(message: "That group isn't on the desk any more.")
         }
-        c.switchTo(group.id)
-        return .result()
+        c.switchTo(g.id)
+        return .result(value: GroupEntity(g, onStage: true))
     }
 }
 
@@ -111,27 +117,103 @@ struct ArrangeIntent: AppIntent {
 
     static var parameterSummary: some ParameterSummary { Summary("Arrange the stage in \(\.$layout)") }
 
+    /// Returns the group on stage, which it arranged.
     @MainActor
-    func perform() async throws -> some IntentResult {
+    func perform() async throws -> some IntentResult & ReturnsValue<GroupEntity> {
         try StageOneIntentError.requireRunning()
+        guard let g = StageController.shared.desk.active else {
+            throw StageOneIntentError(message: "There's no group on stage to arrange.")
+        }
         LayoutService.apply(layout.kind)
-        return .result()
+        return .result(value: GroupEntity(g, onStage: true))
     }
 }
 
+/// SO-110 / SO-122: on, off or toggle. Returns whether Meeting mode ends up on.
 struct ToggleMeetingModeIntent: AppIntent {
-    static let title: LocalizedStringResource = "Toggle Meeting Mode"
-    static let description: IntentDescription? = IntentDescription("Turns Meeting mode on or off.")
+    static let title: LocalizedStringResource = "Set Meeting Mode"
+    static let description: IntentDescription? = IntentDescription("Turns Meeting mode on, off, or the other way. While it's on, private apps are covered while you share your screen.")
+
+    @Parameter(title: "Mode", default: .toggle)
+    var mode: MeetingSwitch
+
+    static var parameterSummary: some ParameterSummary { Summary("\(\.$mode) Meeting mode") }
 
     @MainActor
-    func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard let set = SceneOptionsService.setMeetingMode else {
-            throw StageOneIntentError(message: "Meeting mode isn't in this version of Stage One yet.")
+    func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<Bool> {
+        let m = MeetingMode.shared
+        switch mode {
+        case .on: m.set(true)
+        case .off: m.set(false)
+        case .toggle: m.toggle()
         }
-        let on = !SceneOptionsService.meetingModeOn
-        set(on)
-        let dialog: IntentDialog = on ? "Meeting mode is on." : "Meeting mode is off."
-        return .result(dialog: dialog)
+        let dialog: IntentDialog = m.on ? "Meeting mode is on." : "Meeting mode is off."
+        return .result(value: m.on, dialog: dialog)
+    }
+}
+
+enum MeetingSwitch: String, AppEnum {
+    case on, off, toggle
+
+    static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Meeting mode")
+    static let caseDisplayRepresentations: [MeetingSwitch: DisplayRepresentation] = [
+        .on: "Turn on",
+        .off: "Turn off",
+        .toggle: "Toggle",
+    ]
+}
+
+/// SO-122: actions that only read, so shortcuts can loop over scenes and groups.
+struct GetScenesIntent: AppIntent {
+    static let title: LocalizedStringResource = "Get Scenes"
+    static let description: IntentDescription? = IntentDescription("Gets your saved scenes, newest first.")
+
+    static var parameterSummary: some ParameterSummary { Summary("Get all scenes") }
+
+    func perform() async throws -> some IntentResult & ReturnsValue<[SceneEntity]> {
+        .result(value: SceneCatalog.load().map(SceneEntity.init))
+    }
+}
+
+struct GetCurrentSceneIntent: AppIntent {
+    static let title: LocalizedStringResource = "Get Current Scene"
+    static let description: IntentDescription? = IntentDescription("Gets the scene that's on stage, if there is one.")
+
+    static var parameterSummary: some ParameterSummary { Summary("Get the current scene") }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ReturnsValue<SceneEntity> {
+        let store = SceneStore.shared
+        store.reload()
+        guard let s = store.current else { throw StageOneIntentError(message: "No scene is on stage right now.") }
+        return .result(value: SceneEntity(s))
+    }
+}
+
+struct GetGroupsIntent: AppIntent {
+    static let title: LocalizedStringResource = "Get Groups"
+    static let description: IntentDescription? = IntentDescription("Gets the window groups on the desk, in strip order.")
+
+    static var parameterSummary: some ParameterSummary { Summary("Get the groups on the desk") }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ReturnsValue<[GroupEntity]> {
+        let d = StageController.shared.desk
+        return .result(value: d.groups.map { GroupEntity($0, onStage: $0.id == d.activeID) })
+    }
+}
+
+struct GetRewindPointsIntent: AppIntent {
+    static let title: LocalizedStringResource = "Get Rewind Points"
+    static let description: IntentDescription? = IntentDescription("Gets the times the desk can be rewound to, oldest first. Snapshots are kept for 7 days.")
+
+    static var parameterSummary: some ParameterSummary { Summary("Get rewind points") }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ReturnsValue<[Date]> {
+        let store = RewindStore.shared
+        store.reload()
+        return .result(value: store.snapshots.map(\.date))
     }
 }
 
@@ -160,6 +242,7 @@ struct StageOneShortcuts: AppShortcutsProvider {
         ], shortTitle: "Rewind", systemImageName: "clock.arrow.circlepath")
         AppShortcut(intent: ToggleMeetingModeIntent(), phrases: [
             "Toggle meeting mode in \(.applicationName)",
+            "\(\.$mode) meeting mode in \(.applicationName)",
         ], shortTitle: "Meeting Mode", systemImageName: "person.2.wave.2")
     }
 }
