@@ -58,4 +58,18 @@ final class MeetingModeTests: XCTestCase {
         let l = PrivateList(apps: ["a"], titles: [.init(bundleID: "b", pattern: "c*")])
         XCTAssertEqual(try JSONDecoder().decode(PrivateList.self, from: JSONEncoder().encode(l)), l)
     }
+
+    func testEditing() {
+        var l = PrivateList(apps: [])
+        l.addApp("com.a"); l.addApp("com.a"); l.addApp("")
+        XCTAssertEqual(l.apps, ["com.a"])
+        l.removeApp("com.a")
+        XCTAssertTrue(l.apps.isEmpty)
+        XCTAssertTrue(l.addTitle("  Bank ", bundleID: ""))
+        XCTAssertFalse(l.addTitle("Bank"))
+        XCTAssertFalse(l.addTitle("   "))
+        XCTAssertEqual(l.titles, [.init(pattern: "Bank")])
+        l.removeTitle(.init(pattern: "Bank"))
+        XCTAssertTrue(l.titles.isEmpty)
+    }
 }
