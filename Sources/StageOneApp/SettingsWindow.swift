@@ -183,7 +183,7 @@ private struct SettingRow<Trailing: View>: View {
     }
 }
 
-private struct Note: View {
+struct Note: View {
     let text: String
 
     var body: some View {
@@ -414,6 +414,13 @@ private struct KeyCap: View {
 
 private struct RulesPane: View {
     var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            AppExceptionsCard(prefs: Preferences.shared)
+            scenesCard
+        }
+    }
+
+    private var scenesCard: some View {
         StageCard {
             Text("Rules restore a scene when a monitor connects, a Focus starts, a calendar event begins, an app opens or you join a Wi-Fi network.")
                 .font(.system(size: 13.5))

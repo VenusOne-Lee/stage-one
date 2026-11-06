@@ -69,6 +69,9 @@ public final class WindowInventory: ObservableObject {
         "com.apple.screencaptureui", "com.apple.loginwindow",
     ]
 
+    /// SO-015: apps whose windows float above the stage. Not tracked, so nothing moves them.
+    public var floatingBundleIDs: Set<String> = []
+
     private var observers: [pid_t: AppObserver] = [:]
     private var rescanScheduled = false
     private var safetyTimer: Timer?
@@ -186,10 +189,16 @@ public final class WindowInventory: ObservableObject {
         var order: [CGWindowID] = []
         var pids = Set<pid_t>()
         var alive = Set<CGWindowID>()
+        var floatingPIDs: [pid_t: Bool] = [:]
         for w in info {
             guard (w[kCGWindowLayer as String] as? Int) == 0,
                   let id = w[kCGWindowNumber as String] as? CGWindowID,
                   let pid = w[kCGWindowOwnerPID as String] as? pid_t, pid != ownPID else { continue }
+            if floatingPIDs[pid] == nil {
+                let bundle = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier
+                floatingPIDs[pid] = bundle.map { floatingBundleIDs.contains($0) } ?? false
+            }
+            if floatingPIDs[pid] == true { continue }
             alive.insert(id)
             if let alpha = w[kCGWindowAlpha as String] as? Double, alpha <= 0 { continue }
             order.append(id)
@@ -201,7 +210,8 @@ public final class WindowInventory: ObservableObject {
         var full = fullscreen.filter { alive.contains($0.key) }
         for pid in pids {
             guard let app = NSRunningApplication(processIdentifier: pid), app.activationPolicy == .regular,
-                  let bundle = app.bundleIdentifier, !ignoredBundleIDs.contains(bundle) else { continue }
+                  let bundle = app.bundleIdentifier, !ignoredBundleIDs.contains(bundle),
+                  !floatingBundleIDs.contains(bundle) else { continue }
             if observers[pid] == nil { observe(pid: pid) }
             let axApp = AXUIElementCreateApplication(pid)
             for el in AX.windows(of: axApp) {

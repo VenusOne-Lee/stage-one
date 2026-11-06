@@ -42,6 +42,7 @@ final class StageController: ObservableObject {
         started = true
         inventory.onChange = { [weak self] in self?.inventoryChanged() }
         inventory.onEvent = { [weak self] e in self?.handle(e) }
+        inventory.floatingBundleIDs = Uncooperative.floating(prefs.appExceptions)
         inventory.start()
         parking.reconcile(with: inventory)
         let stale = desk.groups.isEmpty || desk.groups.allSatisfy({ $0.windowIDs.allSatisfy { !inventory.aliveIDs.contains($0) } })

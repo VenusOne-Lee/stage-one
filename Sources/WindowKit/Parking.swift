@@ -15,6 +15,9 @@ public final class Parking {
     }
 
     public private(set) var records: [CGWindowID: Record] = [:]
+    /// SO-015: called when an app put a parked window back on screen (it ignores AX moves).
+    /// The window's record is dropped first, so it's treated as never parked.
+    public var onIgnoredMove: ((TrackedWindow) -> Void)?
     private let mover: WindowMover
     private let file: URL
 
@@ -43,7 +46,19 @@ public final class Parking {
         let frame = window.liveFrame() ?? window.frame
         records[window.id] = Record(snapshot: window.snapshot, frame: frame)
         save()
-        mover.setPosition(window, Self.parkingOrigin)
+        let target = Self.parkingOrigin
+        mover.setPosition(window, target)
+        // Some apps accept the move and then snap back; look again once they've settled.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self, weak window] in
+            MainActor.assumeIsolated {
+                guard let self, let window, self.records[window.id] != nil,
+                      let now = window.liveFrame(),
+                      Uncooperative.ignoredMove(target: target, actual: now) else { return }
+                self.records[window.id] = nil
+                self.save()
+                self.onIgnoredMove?(window)
+            }
+        }
     }
 
     /// Restores the exact frame. Returns false if the window wasn't parked.
