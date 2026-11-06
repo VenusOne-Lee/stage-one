@@ -10,16 +10,33 @@ struct StripView: View {
     @ObservedObject var prefs: Preferences
 
     var body: some View {
-        let groups = controller.desk.stripGroups
+        let searching = controller.desk.groups.count > StripSearch.threshold && model.size == .full
+        let groups = searching
+            ? StripSearch.filter(controller.desk.stripGroups, query: model.query, apps: { controller.appNames(of: $0) })
+            : controller.desk.stripGroups
         let vertical = model.edge.isVertical
+        // SO-024: any number of groups; the strip scrolls past the visible slots.
         Group {
             if vertical {
-                VStack(spacing: model.size == .compact ? 10 : 14) { tiles(groups) ; Spacer(minLength: 0) }
-                    .padding(.top, 8)
-                    .padding(.horizontal, 12)
+                VStack(spacing: 8) {
+                    if searching { StripSearchField(text: $model.query).padding(.horizontal, 12).padding(.top, 8) }
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(spacing: model.size == .compact ? 10 : 14) { tiles(groups) }
+                            .padding(.top, searching ? 4 : 8)
+                            .padding(.bottom, 12)
+                            .padding(.horizontal, 12)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
             } else {
-                HStack(spacing: 14) { tiles(groups) ; Spacer(minLength: 0) }
-                    .padding(.horizontal, 12)
+                HStack(spacing: 8) {
+                    if searching { StripSearchField(text: $model.query).frame(width: 150).padding(.leading, 12) }
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 14) { tiles(groups) }
+                            .padding(.horizontal, 12)
+                            .frame(maxHeight: .infinity)
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -329,5 +346,33 @@ struct NewSlotFrameKey: PreferenceKey {
     static let defaultValue: CGRect? = nil
     static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
         value = nextValue() ?? value
+    }
+}
+
+/// SO-024: filters the strip by group or app name. Esc clears it.
+struct StripSearchField: View {
+    @Binding var text: String
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "magnifyingglass").font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.ink3)
+            TextField("Find a group", text: $text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 11.5))
+                .foregroundStyle(Theme.ink)
+                .focused($focused)
+                .onExitCommand { text = ""; focused = false }
+            if !text.isEmpty {
+                Button { text = "" } label: {
+                    Image(systemName: "xmark.circle.fill").font(.system(size: 10)).foregroundStyle(Theme.ink3)
+                }
+                .buttonStyle(.plain)
+                .help("Clear")
+            }
+        }
+        .padding(.horizontal, 8).padding(.vertical, 5)
+        .background(Capsule().fill(Theme.glass))
+        .overlay(Capsule().strokeBorder(focused ? Theme.spot : Theme.line))
     }
 }
