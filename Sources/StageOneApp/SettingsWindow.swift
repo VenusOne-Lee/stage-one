@@ -606,13 +606,20 @@ private struct IntegrationsPane: View {
             StageCard {
                 CommandLineRow()
                 Divider().opacity(0.5)
-                IntegrationRow(title: "Alfred", detail: "A workflow with the keyword st for scenes, groups and layouts.")
+                AlfredRow()
                 Divider().opacity(0.5)
                 IntegrationRow(title: "Raycast", detail: "An extension with the same commands.")
                 Divider().opacity(0.5)
-                IntegrationRow(title: "Spotlight and Shortcuts", detail: "Every scene, group and layout as an App Intent.")
+                SettingRow(title: "Spotlight and Shortcuts", detail: "Scenes show up in Spotlight. Restore, save, rewind, show a group and arrange are in the Shortcuts app.") {
+                    Text("Built in")
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(Theme.spot)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(Theme.spotSoft))
+                }
             }
-            Note(text: "Installers for these arrive in upcoming versions.")
+            Note(text: "The Raycast extension arrives in an upcoming version.")
         }
     }
 }
@@ -634,6 +641,23 @@ private struct CommandLineRow: View {
                 Button("Install") { installed = CLIInstaller.install() }
                     .buttonStyle(StageButtonStyle(kind: .spot))
             }
+        }
+    }
+}
+
+/// SO-092: opens the bundled Alfred workflow, which Alfred offers to import.
+private struct AlfredRow: View {
+    private static var workflow: URL? {
+        Bundle.main.url(forResource: "Stage One", withExtension: "alfredworkflow")
+    }
+
+    var body: some View {
+        SettingRow(title: "Alfred", detail: "Keyword st: restore scenes, save, layout, rewind and g for groups. Needs Alfred's Powerpack and the command line tool.") {
+            Button("Add to Alfred") {
+                if let url = Self.workflow { NSWorkspace.shared.open(url) }
+            }
+            .buttonStyle(StageButtonStyle(kind: .spot))
+            .disabled(Self.workflow == nil)
         }
     }
 }
