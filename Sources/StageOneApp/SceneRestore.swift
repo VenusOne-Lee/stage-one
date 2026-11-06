@@ -23,7 +23,8 @@ enum SceneRestore {
     private(set) static var lastRestoreAt: Date?
 
     @discardableResult
-    static func restore(_ scene: StageScene, undoable: Bool = true, relaunch: Bool = true, quiet: Bool = false) -> Outcome {
+    static func restore(_ scene: StageScene, undoable: Bool = true, relaunch: Bool = true, quiet: Bool = false,
+                        setsCurrent: Bool = true) -> Outcome {
         lastRestoreAt = Date()
         let c = StageController.shared
         if undoable {
@@ -43,7 +44,7 @@ enum SceneRestore {
             let undo: (title: String, run: () -> Void)? = undoable ? (title: "Undo", run: { SceneRestore.undo() }) : nil
             Toast.shared.show("Restored “\(scene.name)”", detail: detail, action: undo, duration: undoable ? 30 : 4)
         }
-        if !scene.name.hasPrefix("Before restoring") {
+        if setsCurrent, !scene.name.hasPrefix("Before restoring") {
             Preferences.shared.currentScene = scene.name
             Preferences.shared.sceneEdited = false
         }
