@@ -4,5 +4,7 @@
 <dict>
     <!-- SO-073: calendar rules read events under the hardened runtime. -->
     <key>com.apple.security.personal-information.calendars</key><true/>
+    <!-- SO-074: Location access, which macOS requires to read the Wi-Fi network name. -->
+    <key>com.apple.security.personal-information.location</key><true/>
 </dict>
 </plist>

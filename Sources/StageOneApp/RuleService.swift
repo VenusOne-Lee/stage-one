@@ -28,6 +28,7 @@ final class RuleService: ObservableObject {
             MainActor.assumeIsolated { if let bundle { RuleService.shared.post(.appLaunched(bundle)) } }
         }))
         scheduleClock()
+        WifiWatcher.shared.install()
     }
 
     func uninstall() {
@@ -35,12 +36,13 @@ final class RuleService: ObservableObject {
         tokens.removeAll()
         clock?.invalidate()
         clock = nil
+        WifiWatcher.shared.uninstall()
         pending?.cancel()
         pending = nil
         installed = false
     }
 
-    /// Fires at the start of every minute for time-of-day and calendar rules.
+    /// Fires at the start of every minute for time-of-day, calendar and Wi-Fi rules.
     private func scheduleClock() {
         let now = Date()
         let next = Calendar.current.nextDate(after: now, matching: DateComponents(second: 0), matchingPolicy: .nextTime) ?? now.addingTimeInterval(60)
@@ -50,6 +52,8 @@ final class RuleService: ObservableObject {
                 RuleService.shared.post(.time(hour: c.hour ?? 0, minute: c.minute ?? 0))
                 // SO-073: events that just started.
                 CalendarWatcher.shared.check(scenes: SceneStore.shared.scenes)
+                // SO-074: a network change the Wi-Fi callback missed.
+                WifiWatcher.shared.check()
             }
         }
         t.tolerance = 1

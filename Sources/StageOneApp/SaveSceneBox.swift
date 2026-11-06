@@ -46,6 +46,9 @@ struct SaveSceneBox: View {
                     TextField("Title word or calendar", text: $triggerMatch)
                         .textFieldStyle(.roundedBorder).frame(width: 150)
                         .help("Matches an event whose title contains this, or a calendar with this name. Empty matches any event.")
+                } else if trigger == .wifi {
+                    TextField("Network name", text: $triggerMatch)
+                        .textFieldStyle(.roundedBorder).frame(width: 150)
                 } else if trigger == .time {
                     DatePicker("", selection: $triggerTime, displayedComponents: .hourAndMinute)
                         .labelsHidden().fixedSize()
@@ -69,6 +72,14 @@ struct SaveSceneBox: View {
             }
             .font(.system(size: 12))
             .foregroundStyle(Theme.ink2)
+            if trigger == .wifi && !WifiWatcher.shared.locationAllowed {
+                // SO-074: macOS hides Wi-Fi names from apps without Location access.
+                Text(WifiWatcher.shared.locationDenied
+                     ? "macOS only shares the Wi-Fi name with apps that have Location access. Allow Stage One in System Settings › Privacy & Security › Location Services."
+                     : "macOS only shares the Wi-Fi name with apps that have Location access, so it will ask. Stage One never reads where you are.")
+                    .font(.system(size: 11)).foregroundStyle(Theme.ink3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if calendarDenied {
                 Text("Stage One can't see your calendar. Allow it in System Settings › Privacy & Security › Calendars.")
                     .font(.system(size: 11)).foregroundStyle(Theme.spot)
@@ -89,6 +100,11 @@ struct SaveSceneBox: View {
             }
         }
         .onAppear { focused = true }
+        .onChange(of: trigger) { _, t in
+            guard t == .wifi else { return }
+            WifiWatcher.shared.requestAccess()
+            if triggerMatch.isEmpty, let n = WifiWatcher.shared.currentNetwork { triggerMatch = n }
+        }
     }
 
     private func save() {
@@ -123,7 +139,7 @@ enum OtherApps: String, CaseIterable {
 
 /// Triggers offered in the Save box.
 enum SceneTrigger: String, CaseIterable {
-    case none, displayConnected, displayDisconnected, focus, calendar, appLaunched, time
+    case none, displayConnected, displayDisconnected, focus, calendar, appLaunched, wifi, time
 
     var title: String {
         switch self {
@@ -133,6 +149,7 @@ enum SceneTrigger: String, CaseIterable {
         case .focus: return "When a Focus starts"
         case .calendar: return "When a calendar event starts"
         case .appLaunched: return "When an app opens"
+        case .wifi: return "When I join a Wi-Fi network"
         case .time: return "At a set time"
         }
     }
@@ -149,7 +166,7 @@ enum SceneTrigger: String, CaseIterable {
             let c = Calendar.current.dateComponents([.hour, .minute], from: time)
             return .init(type: rawValue, time: String(format: "%02d:%02d", c.hour ?? 9, c.minute ?? 0))
         case .focus: return .init(type: rawValue)
-        case .calendar:
+        case .calendar, .wifi:
             let m = match.trimmingCharacters(in: .whitespaces)
             return .init(type: rawValue, match: m.isEmpty ? nil : m)
         }
