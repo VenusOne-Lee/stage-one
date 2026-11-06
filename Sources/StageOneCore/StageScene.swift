@@ -191,10 +191,32 @@ public struct StageScene: Codable, Sendable, Equatable, Identifiable {
         }.joined(separator: "\n") + "#\(active)"
     }
 
-    /// Copy without document paths (SO-120 export default).
+    /// Copy without file paths (SO-120 export default): window documents, the relaunch command's
+    /// document, and the wallpaper.
     public func strippingDocuments() -> StageScene {
         var s = self
-        for g in s.groups.indices { for w in s.groups[g].windows.indices { s.groups[g].windows[w].document = nil } }
+        for g in s.groups.indices {
+            for w in s.groups[g].windows.indices {
+                s.groups[g].windows[w].document = nil
+                if s.groups[g].windows[w].relaunch != nil { s.groups[g].windows[w].relaunch = "open -b \(s.groups[g].windows[w].bundleId)" }
+            }
+        }
+        s.options.wallpaper = nil
+        return s
+    }
+
+    /// SO-120: a scene file opened from elsewhere, ready to add. Its name gets " 2", " 3"… if
+    /// taken, and its rule starts switched off, so a shared file can't move windows on its own.
+    public func preparedForImport(existingNames: [String]) -> StageScene {
+        var s = self
+        // Files are stored by slug, so two names with the same slug would collide.
+        let taken = Set(existingNames.map(StageScene.slug(for:)))
+        if taken.contains(slug) {
+            var n = 2
+            while taken.contains(StageScene.slug(for: "\(name) \(n)")) { n += 1 }
+            s.name = "\(name) \(n)"
+        }
+        s.rule?.enabled = false
         return s
     }
 }

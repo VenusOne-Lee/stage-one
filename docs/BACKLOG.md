@@ -314,8 +314,8 @@ Acceptance:
 ### E13 Share and automate
 ### SO-120 · Export and import scenes · P2 · S
 Acceptance:
-- [ ] A scene exports as a `.stagescene` file without document paths unless the user ticks "Include files".
-- [ ] Double-clicking a scene file imports it.
+- [x] A scene exports as a `.stagescene` file without document paths unless the user ticks "Include files".
+- [x] Double-clicking a scene file imports it.
 ### SO-121 · MCP server · P2 · M
 Acceptance:
 - [ ] `stage mcp` runs over stdio with these tools: `list_scenes`, `restore_scene`, `save_scene`, `list_groups`, `arrange`, `rewind_points`.

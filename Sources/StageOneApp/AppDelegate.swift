@@ -34,6 +34,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         SpotlightIndex.shared.open(userActivity)
     }
 
+    /// SO-120: double-clicked `.stagescene` files are imported. `stageone://` links that arrive
+    /// before the link handler is installed are passed on to it.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        let files = urls.filter { $0.isFileURL && $0.pathExtension == StageScene.fileExtension }
+        if !files.isEmpty { SceneFiles.open(files) }
+        for url in urls where url.scheme == "stageone" && StageController.shared.isRunning { CommandRouter.open(url) }
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         StageController.shared.stop()
     }
