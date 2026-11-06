@@ -72,7 +72,32 @@ final class StripManager {
         guard let panel, let l = screenLayout else { return }
         model.edge = l.stripEdge
         model.size = l.size
-        panel.place(lane: l.lane)
+        panel.place(lane: hidden ? StripVisibility.hiddenLane(l.lane, edge: l.stripEdge) : l.lane)
+    }
+
+    /// SO-032: true while the strip is slid off and faded out.
+    private(set) var hidden = false
+
+    /// Slides the strip 40pt toward its edge and fades it (or brings it back).
+    /// While hidden it lets clicks through to the windows underneath.
+    func setHidden(_ hide: Bool, animated: Bool) {
+        hidden = hide
+        guard let panel, let l = screenLayout else { return }
+        let lane = hide ? StripVisibility.hiddenLane(l.lane, edge: l.stripEdge) : l.lane
+        let frame = CoordinateSpace.flip(lane, primaryHeight: Displays.primaryHeight)
+        panel.ignoresMouseEvents = hide
+        let motion = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        if motion {
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = hide ? 0.22 : 0.28
+                ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1)
+                panel.animator().setFrame(frame, display: true)
+                panel.animator().alphaValue = hide ? 0 : 1
+            }
+        } else {
+            panel.setFrame(frame, display: true)
+            panel.alphaValue = hide ? 0 : 1
+        }
     }
 }
 
