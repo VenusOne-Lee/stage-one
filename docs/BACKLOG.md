@@ -304,9 +304,9 @@ Acceptance:
 ### E12 Meeting mode and privacy
 ### SO-110 · Meeting mode · P2 · M
 Acceptance:
-- [ ] Turns on by hand, by a rule, or automatically when screen sharing starts (detected by `SCShareableContent` / a CGSession check).
-- [ ] Windows of apps marked private (Mail, Messages, Slack, WhatsApp by default) get a blurred overlay panel reading "Hidden while you share".
-- [ ] The strip hides their thumbnails.
+- [x] Turns on by hand, by a rule, or automatically when screen sharing starts (detected by `SCShareableContent` / a CGSession check).
+- [x] Windows of apps marked private (Mail, Messages, Slack, WhatsApp by default) get a blurred overlay panel reading "Hidden while you share".
+- [x] The strip hides their thumbnails.
 ### SO-111 · Private window picker · P2 · S
 Acceptance:
 - [ ] Mark an app, or a single window by title pattern, as private.

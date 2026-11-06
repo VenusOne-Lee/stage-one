@@ -5,9 +5,9 @@ import StageOneCore
 /// hiding or quitting apps that aren't in it, and its wallpaper.
 @MainActor
 enum SceneOptionsService {
-    /// Meeting mode arrives with SO-110; it registers here.
+    /// Meeting mode (SO-110) registers here.
     static var setMeetingMode: ((Bool) -> Void)?
-    /// Whether Meeting mode is on; SO-110 keeps it current.
+    /// Whether Meeting mode is on; MeetingMode keeps it current.
     static var meetingModeOn = false
 
     /// Shortcuts the user can add so scenes can switch Do Not Disturb (macOS has no API for Focus).
@@ -17,7 +17,8 @@ enum SceneOptionsService {
     static func apply(_ scene: StageScene) {
         let o = scene.options
         if o.dnd { setDoNotDisturb(true) }
-        setMeetingMode?(o.meetingMode)
+        // A scene turns Meeting mode on; one without it leaves it as it is (you may be sharing).
+        if o.meetingMode { setMeetingMode?(true) }
         if let path = o.wallpaper { setWallpaper(URL(fileURLWithPath: path)) }
         let others = otherApps(scene)
         if o.closeOthers, !others.isEmpty {

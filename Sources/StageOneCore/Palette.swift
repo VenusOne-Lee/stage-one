@@ -3,7 +3,7 @@ import Foundation
 /// SO-080: one row of the ⌘K command bar.
 public struct PaletteItem: Sendable, Equatable {
     public enum Kind: String, Sendable, CaseIterable {
-        case group = "Group", scene = "Scene", arrange = "Arrange", time = "Time", rules = "Rules", window = "Window"
+        case group = "Group", scene = "Scene", arrange = "Arrange", time = "Time", rules = "Rules", share = "Share", window = "Window"
     }
 
     public enum Action: Sendable, Equatable {
@@ -15,6 +15,7 @@ public struct PaletteItem: Sendable, Equatable {
         case rewind(Date)
         case openRules
         case focusWindow(UInt32)
+        case toggleMeetingMode
     }
 
     public var kind: Kind

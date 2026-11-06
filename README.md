@@ -10,6 +10,10 @@ A free, open source macOS window manager. Window groups live in a side strip and
 
 MIT licensed.
 
+## Meeting mode
+
+⌃⌥M, the menu bar or the command bar turns it on, and by default it turns itself on while you share your screen (macOS Screen Sharing, Zoom, Teams, Meet in the browser). Windows of private apps (Mail, Messages, Slack and WhatsApp to start with; change them in Settings › Privacy) get a frosted cover reading "Hidden while you share", and the strip hides their previews. A scene can turn it on too.
+
 ## Launchers
 
 - **Alfred:** `Stage One.alfredworkflow` comes with each release and in Settings › Integrations › Add to Alfred. Keyword `st`: `st <scene>` restores (⌘↩ saves the desk under what you typed, ⌥↩ rewinds 15 minutes), `st save <name>`, `st layout <kind>`, `st rewind`, `st g <group>`. It needs Alfred's Powerpack and the `stage` command (Settings › Integrations › Command line). See [integrations/alfred](integrations/alfred/README.md).

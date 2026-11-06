@@ -43,6 +43,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(item("View", #selector(showView)))
         menu.addItem(item("Rules", #selector(rules)))
         menu.addItem(item("Command bar  \(LayoutShortcut.commandBar.shortcut(in: prefs.layoutShortcuts).display)", #selector(commandBar)))
+        // SO-110.
+        let meeting = item("Meeting mode  \(LayoutShortcut.meetingMode.shortcut(in: prefs.layoutShortcuts).display)", #selector(toggleMeeting))
+        meeting.state = MeetingMode.shared.on ? .on : .off
+        menu.addItem(meeting)
         menu.addItem(.separator())
 
         menu.addItem(item("Settings…", #selector(settings), key: ","))
@@ -96,6 +100,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func showView() { Panels.shared.show(.view) }
     @objc private func rules() { Panels.shared.show(.rules) }
     @objc private func commandBar() { Panels.shared.show(.commandBar) }
+    @objc private func toggleMeeting() { MeetingMode.shared.toggle() }
     @objc private func sendFeedback() { FeedbackService.send() }
     @objc private func openGitHub() {
         if let url = URL(string: "https://github.com/\(Feedback.repository)") { NSWorkspace.shared.open(url) }

@@ -172,16 +172,23 @@ struct GroupTile: View {
 struct WindowPreview: View {
     let window: TrackedWindow
     @ObservedObject var thumbnails: Thumbnails
+    /// SO-110: private windows show only their icon while Meeting mode is on.
+    @ObservedObject var meeting = MeetingMode.shared
 
     var body: some View {
         ZStack {
-            if let img = thumbnails.image(for: window.id) {
+            if !meeting.hides(window), let img = thumbnails.image(for: window.id) {
                 Image(nsImage: img).resizable().aspectRatio(contentMode: .fill)
             } else {
                 LinearGradient(colors: [Color(hex: 0xfffdfb), Color(hex: 0xf5f1ec)], startPoint: .top, endPoint: .bottom)
                 if let icon = window.app?.icon {
                     Image(nsImage: icon).resizable().frame(width: 40, height: 40)
                 }
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if meeting.hides(window) {
+                Text("Private").font(.system(size: 9.5, weight: .semibold)).foregroundStyle(Theme.ink3).padding(.bottom, 4)
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))

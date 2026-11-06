@@ -100,7 +100,7 @@ struct SettingsView: View {
         case .stripDock: StripDockPane(prefs: prefs)
         case .shortcuts: ShortcutsPane(prefs: prefs)
         case .rules: RulesPane()
-        case .privacy: PrivacyPane()
+        case .privacy: PrivacyPane(prefs: prefs)
         case .integrations: IntegrationsPane()
         case .about: AboutPane()
         }
@@ -406,6 +406,14 @@ private struct ShortcutsPane: View {
                 }
                 Note(text: "Search groups, scenes, layouts, rewind points, rules and every window. ⌘K clashes with many apps, so the default is ⌃Space.")
             }
+            StageCard {
+                HStack {
+                    Text("Meeting mode").font(.system(size: 13.5))
+                    Spacer()
+                    ShortcutRecorder(action: .meetingMode, prefs: prefs)
+                }
+                Note(text: "Hides private apps while you share your screen. Settings › Privacy chooses which.")
+            }
             Toggle("Group hotkeys (⌥1 – ⌥9)", isOn: $prefs.groupHotkeysEnabled)
                 .toggleStyle(.switch)
                 .font(.system(size: 13))
@@ -542,8 +550,24 @@ private struct RulesPane: View {
 // MARK: - Privacy
 
 private struct PrivacyPane: View {
+    @ObservedObject var prefs: Preferences
+    @ObservedObject var meeting = MeetingMode.shared
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
+            // SO-110: Meeting mode.
+            StageCard {
+                SettingRow(title: "Meeting mode", detail: "Covers private apps with “Hidden while you share” and hides their previews in the strip.") {
+                    Toggle("", isOn: Binding(get: { meeting.on }, set: { meeting.set($0) }))
+                        .labelsHidden().toggleStyle(.switch).tint(Theme.spot)
+                }
+                Divider().opacity(0.5)
+                SettingRow(title: "Turn on when I share my screen", detail: "Works with macOS Screen Sharing, Zoom, Teams and Meet in the browser. Turns off again when sharing stops.") {
+                    Toggle("", isOn: $prefs.meetingAuto).labelsHidden().toggleStyle(.switch).tint(Theme.spot)
+                }
+                Divider().opacity(0.5)
+                PrivateAppsList(prefs: prefs)
+            }
             StageCard {
                 PrivacyLine(title: "No analytics", text: "Stage One collects nothing and sends nothing. There is no tracking and no account.")
                 PrivacyLine(title: "Titles stay on your Mac", text: "Window titles, file names and previews are only used on this Mac and are never uploaded.")
@@ -563,6 +587,24 @@ private struct PrivacyPane: View {
                         Permissions.openScreenRecordingSettings()
                     }
                 }
+            }
+        }
+    }
+}
+
+/// The apps Meeting mode hides.
+private struct PrivateAppsList: View {
+    @ObservedObject var prefs: Preferences
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Private apps").font(.system(size: 13.5, weight: .semibold))
+            let apps = prefs.privateList.apps
+            if apps.isEmpty {
+                Text("None").font(.system(size: 12.5)).foregroundStyle(Theme.ink3)
+            } else {
+                Text(apps.map { MeetingMode.appName($0) ?? $0 }.joined(separator: ", "))
+                    .font(.system(size: 12.5)).foregroundStyle(Theme.ink2).fixedSize(horizontal: false, vertical: true)
             }
         }
     }

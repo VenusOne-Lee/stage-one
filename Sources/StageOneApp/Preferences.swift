@@ -31,6 +31,12 @@ final class Preferences: ObservableObject {
     @Published var appExceptions: [AppException] {
         didSet { d.set(try? JSONEncoder().encode(appExceptions), forKey: "appExceptions") }
     }
+    /// SO-110 / SO-111: what Meeting mode hides.
+    @Published var privateList: PrivateList {
+        didSet { d.set(try? JSONEncoder().encode(privateList), forKey: "privateList") }
+    }
+    /// SO-110: turn Meeting mode on while the screen is shared.
+    @Published var meetingAuto: Bool { didSet { d.set(meetingAuto, forKey: "meetingAuto") } }
     /// The desk differs from the current scene (shown as "· edited"). Not persisted.
     @Published var sceneEdited = false
     /// Persisted desk (groups), so groups survive a relaunch.
@@ -62,6 +68,8 @@ final class Preferences: ObservableObject {
         stageManagerTurnedOff = d.bool(forKey: "stageManagerTurnedOff")
         layoutShortcuts = d.data(forKey: "layoutShortcuts").flatMap { try? JSONDecoder().decode([String: Shortcut].self, from: $0) } ?? [:]
         appExceptions = d.data(forKey: "appExceptions").flatMap { try? JSONDecoder().decode([AppException].self, from: $0) } ?? []
+        privateList = d.data(forKey: "privateList").flatMap { try? JSONDecoder().decode(PrivateList.self, from: $0) } ?? PrivateList()
+        meetingAuto = d.object(forKey: "meetingAuto") as? Bool ?? true
         spacesMode = SpacesMode(rawValue: d.string(forKey: "spacesMode") ?? "") ?? .shared
     }
 }
