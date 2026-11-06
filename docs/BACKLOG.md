@@ -290,7 +290,7 @@ Acceptance:
 - [ ] README notes that Alfred's Powerpack is required.
 ### SO-093 · Raycast extension · P2 · M
 Acceptance:
-- [ ] The same commands through the CLI, published to the Raycast store.
+- [x] The same commands through the CLI, published to the Raycast store.
 
 ### E11 CLI and URL scheme
 ### SO-100 · `stage` CLI · P0 · M

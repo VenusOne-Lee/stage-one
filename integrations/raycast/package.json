@@ -1,0 +1,36 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "stage-one",
+  "title": "Stage One",
+  "description": "Restore scenes, save the desk, arrange the stage and rewind with Stage One, the free window manager for macOS.",
+  "icon": "icon.png",
+  "author": "venusone-lee",
+  "categories": ["Productivity", "Developer Tools"],
+  "license": "MIT",
+  "platforms": ["macOS"],
+  "commands": [
+    { "name": "restore-scene", "title": "Restore Scene", "subtitle": "Stage One", "description": "Search your scenes and put one on the desk.", "mode": "view" },
+    { "name": "save-scene", "title": "Save Scene", "subtitle": "Stage One", "description": "Save every group and window as a scene.", "mode": "view" },
+    { "name": "show-group", "title": "Show Group", "subtitle": "Stage One", "description": "Put a group on stage.", "mode": "view" },
+    { "name": "arrange", "title": "Arrange Stage", "subtitle": "Stage One", "description": "Arrange the windows on stage: free, halves, focus, thirds or grid.", "mode": "view" },
+    { "name": "rewind", "title": "Rewind Desk", "subtitle": "Stage One", "description": "Put the desk back the way it was 15 minutes, 1 hour or 3 hours ago.", "mode": "view" }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.104.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.11",
+    "@types/node": "22.19.17",
+    "@types/react": "19.0.10",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.4.5"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "lint": "ray lint",
+    "typecheck": "tsc --noEmit",
+    "publish": "npx @raycast/api@latest publish"
+  }
+}

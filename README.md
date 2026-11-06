@@ -13,4 +13,5 @@ MIT licensed.
 ## Launchers
 
 - **Alfred:** `Stage One.alfredworkflow` comes with each release and in Settings › Integrations › Add to Alfred. Keyword `st`: `st <scene>` restores (⌘↩ saves the desk under what you typed, ⌥↩ rewinds 15 minutes), `st save <name>`, `st layout <kind>`, `st rewind`, `st g <group>`. It needs Alfred's Powerpack and the `stage` command (Settings › Integrations › Command line). See [integrations/alfred](integrations/alfred/README.md).
+- **Raycast:** Restore Scene, Save Scene, Show Group, Arrange Stage and Rewind Desk. Source in [integrations/raycast](integrations/raycast/README.md), headed for the Raycast Store.
 - **Spotlight and Shortcuts:** scenes are indexed in Spotlight, and Restore Scene, Save Scene, Rewind Desk, Show Group and Arrange Stage are in the Shortcuts app.
