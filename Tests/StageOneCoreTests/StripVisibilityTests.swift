@@ -41,3 +41,16 @@ final class StripVisibilityTests: XCTestCase {
         XCTAssertEqual(StripVisibility.hiddenLane(lane, edge: .left).minX, -40)
     }
 }
+
+/// SO-033: Auto-hide keeps the strip hidden until the pointer reaches its edge.
+extension StripVisibilityTests {
+    func testAutoHide() {
+        var v = StripVisibility()
+        XCTAssertFalse(v.update(mode: .autohide, windowsTouchLane: false, pointerAtEdge: false, pointerInLane: false, now: 0))
+        XCTAssertTrue(v.update(mode: .autohide, windowsTouchLane: false, pointerAtEdge: true, pointerInLane: true, now: 1))
+        XCTAssertTrue(v.update(mode: .autohide, windowsTouchLane: false, pointerAtEdge: false, pointerInLane: true, now: 5))
+        XCTAssertTrue(v.update(mode: .autohide, windowsTouchLane: false, pointerAtEdge: false, pointerInLane: false, now: 6))
+        XCTAssertTrue(v.update(mode: .autohide, windowsTouchLane: false, pointerAtEdge: false, pointerInLane: false, now: 6.5))
+        XCTAssertFalse(v.update(mode: .autohide, windowsTouchLane: false, pointerAtEdge: false, pointerInLane: false, now: 6.61))
+    }
+}
