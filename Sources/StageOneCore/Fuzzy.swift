@@ -31,3 +31,18 @@ public enum Fuzzy {
         items.compactMap { i in score(query, in: key(i)).map { (i, $0) } }.sorted { $0.1 > $1.1 }.map(\.0)
     }
 }
+
+/// SO-024: the strip's search field, shown once there are more groups than visible slots.
+public enum StripSearch {
+    /// More groups than this and the strip shows a search field.
+    public static let threshold = 8
+
+    /// Groups whose name or one of whose apps matches `query`, in strip order.
+    public static func filter(_ groups: [StageGroup], query: String, apps: (StageGroup) -> [String]) -> [StageGroup] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return groups }
+        return groups.filter { g in
+            Fuzzy.score(q, in: g.name) != nil || apps(g).contains { Fuzzy.score(q, in: $0) != nil }
+        }
+    }
+}

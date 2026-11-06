@@ -105,6 +105,8 @@ final class StripModel: ObservableObject {
     @Published var size: StripSize = .full
     /// Shows ⌥ number badges while Option is held (SO-021).
     @Published var showNumbers = false
+    /// SO-024: the strip's search text (shown with more than 8 groups).
+    @Published var query = ""
     /// Group currently highlighted as a drop target (SO-022).
     @Published var dropTarget: UUID?
     @Published var dropOnNew = false

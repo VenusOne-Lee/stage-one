@@ -401,6 +401,11 @@ final class StageController: ObservableObject {
         group.windowIDs.compactMap { inventory[$0] ?? inventory.fullscreen[$0] }
     }
 
+    /// App names in a group, for the strip's search (SO-024).
+    func appNames(of group: StageGroup) -> [String] {
+        Array(Set(windows(of: group).map(\.snapshot.appName)))
+    }
+
     func appIcons(of group: StageGroup, limit: Int = 2) -> [NSImage] {
         var seen = Set<pid_t>(), icons: [NSImage] = []
         for w in windows(of: group) where !seen.contains(w.pid) {
