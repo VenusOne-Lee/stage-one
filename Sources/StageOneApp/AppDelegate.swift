@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Panels.shared.handlers[.scenes] = { ScenesPanel.show() }
         Panels.shared.handlers[.view] = { ViewPanel.show() }
         Panels.shared.handlers[.rewind] = { RewindPanel.show() }
+        Panels.shared.handlers[.rules] = { RulesPanel.show() }
         CommandRouter.setPaused = { $0 ? Engine.pause() : Engine.resume() }
         MenuBarController.shared.install()
         // "· edited" is tracked by SceneEdited (SO-053), which compares the desk with the scene.

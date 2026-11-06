@@ -69,10 +69,36 @@ public struct StageScene: Codable, Sendable, Equatable, Identifiable {
         public var cgFrame: CGRect { CGRect(array: frame) }
     }
 
+    /// When a scene restores itself (SO-070). `type` is a `RuleTrigger` raw value; the
+    /// other fields are that trigger's parameter. Older files have only type and display.
     public struct Rule: Codable, Sendable, Equatable {
         public var type: String
+        /// displayConnected / displayDisconnected: the display's stable id.
         public var display: String?
-        public init(type: String, display: String? = nil) { self.type = type; self.display = display }
+        /// appLaunched: bundle id.
+        public var app: String?
+        /// time: "HH:mm", 24-hour.
+        public var time: String?
+        /// focus: the Focus name; calendar: a title keyword or calendar name; wifi: network name.
+        public var match: String?
+        /// Rules can be switched off without deleting them.
+        public var enabled: Bool
+
+        public init(type: String, display: String? = nil, app: String? = nil, time: String? = nil,
+                    match: String? = nil, enabled: Bool = true) {
+            self.type = type; self.display = display; self.app = app; self.time = time
+            self.match = match; self.enabled = enabled
+        }
+
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            type = try c.decode(String.self, forKey: .type)
+            display = try c.decodeIfPresent(String.self, forKey: .display)
+            app = try c.decodeIfPresent(String.self, forKey: .app)
+            time = try c.decodeIfPresent(String.self, forKey: .time)
+            match = try c.decodeIfPresent(String.self, forKey: .match)
+            enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
+        }
     }
 
     public struct Options: Codable, Sendable, Equatable {

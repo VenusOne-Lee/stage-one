@@ -8,6 +8,8 @@ struct SaveSceneBox: View {
     var onDone: () -> Void = {}
     @State private var name = Scenes.suggestedName()
     @State private var trigger: SceneTrigger = .none
+    @State private var triggerApp = ""
+    @State private var triggerTime = Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date()) ?? Date()
     @State private var dnd = false
     @State private var meeting = false
     @State private var others: OtherApps = .leave
@@ -31,6 +33,17 @@ struct SaveSceneBox: View {
                 }
                 .pickerStyle(.menu)
                 .fixedSize()
+                // SO-070: the trigger's parameter.
+                if trigger == .appLaunched {
+                    Picker("", selection: $triggerApp) {
+                        Text("Any app").tag("")
+                        ForEach(SceneTrigger.runningApps(), id: \.bundle) { Text($0.name).tag($0.bundle) }
+                    }
+                    .labelsHidden().pickerStyle(.menu).fixedSize()
+                } else if trigger == .time {
+                    DatePicker("", selection: $triggerTime, displayedComponents: .hourAndMinute)
+                        .labelsHidden().fixedSize()
+                }
                 Spacer()
                 Toggle("Do Not Disturb", isOn: $dnd).toggleStyle(.checkbox).tint(Theme.spot)
                 Toggle("Meeting mode", isOn: $meeting).toggleStyle(.checkbox).tint(Theme.spot)
@@ -72,7 +85,7 @@ struct SaveSceneBox: View {
         let picture = wallpaper ? NSScreen.main.flatMap { NSWorkspace.shared.desktopImageURL(for: $0)?.path } : nil
         let options = StageScene.Options(dnd: dnd, meetingMode: meeting, hideOthers: others == .hide,
                                          closeOthers: others == .quit, wallpaper: picture)
-        if Scenes.save(name: name, options: options, rule: trigger.rule) != nil { onDone() }
+        if Scenes.save(name: name, options: options, rule: trigger.rule(app: triggerApp, time: triggerTime)) != nil { onDone() }
     }
 }
 
@@ -91,24 +104,41 @@ enum OtherApps: String, CaseIterable {
 
 /// Triggers offered in the Save box (the rule engine arrives with SO-070).
 enum SceneTrigger: String, CaseIterable {
-    case none, displayConnected, focus, appLaunched, time
+    case none, displayConnected, displayDisconnected, focus, appLaunched, time
 
     var title: String {
         switch self {
         case .none: return "Restore by hand"
         case .displayConnected: return "When this display connects"
+        case .displayDisconnected: return "When a display unplugs"
         case .focus: return "When a Focus starts"
         case .appLaunched: return "When an app opens"
         case .time: return "At a set time"
         }
     }
 
-    @MainActor var rule: StageScene.Rule? {
+    /// The rule to save. "This display" is the newest one connected (an external, usually).
+    @MainActor func rule(app: String, time: Date) -> StageScene.Rule? {
         switch self {
         case .none: return nil
-        case .displayConnected: return .init(type: "displayConnected", display: ScreenLayouts.current()?.displayID)
-        default: return .init(type: rawValue)
+        case .displayConnected:
+            return .init(type: rawValue, display: NSScreen.screens.last.map(Displays.stableID(of:)))
+        case .displayDisconnected: return .init(type: rawValue)
+        case .appLaunched: return .init(type: rawValue, app: app.isEmpty ? nil : app)
+        case .time:
+            let c = Calendar.current.dateComponents([.hour, .minute], from: time)
+            return .init(type: rawValue, time: String(format: "%02d:%02d", c.hour ?? 9, c.minute ?? 0))
+        case .focus: return .init(type: rawValue)
         }
+    }
+
+    struct RunningApp { let bundle: String; let name: String }
+
+    @MainActor static func runningApps() -> [RunningApp] {
+        NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular && $0.bundleIdentifier != Bundle.main.bundleIdentifier }
+            .compactMap { a in a.bundleIdentifier.map { RunningApp(bundle: $0, name: a.localizedName ?? $0) } }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 }
 
