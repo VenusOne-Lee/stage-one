@@ -40,7 +40,7 @@ final class RuleService: ObservableObject {
         installed = false
     }
 
-    /// Fires at the start of every minute for time-of-day rules.
+    /// Fires at the start of every minute for time-of-day and calendar rules.
     private func scheduleClock() {
         let now = Date()
         let next = Calendar.current.nextDate(after: now, matching: DateComponents(second: 0), matchingPolicy: .nextTime) ?? now.addingTimeInterval(60)
@@ -48,6 +48,8 @@ final class RuleService: ObservableObject {
             MainActor.assumeIsolated {
                 let c = Calendar.current.dateComponents([.hour, .minute], from: Date())
                 RuleService.shared.post(.time(hour: c.hour ?? 0, minute: c.minute ?? 0))
+                // SO-073: events that just started.
+                CalendarWatcher.shared.check(scenes: SceneStore.shared.scenes)
             }
         }
         t.tolerance = 1

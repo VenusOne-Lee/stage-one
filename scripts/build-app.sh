@@ -74,7 +74,7 @@ if [ -e "$FW/XPCServices/Downloader.xpc" ]; then
 fi
 codesign "${sign_flags[@]}" "$APP/Contents/Frameworks/Sparkle.framework"
 codesign "${sign_flags[@]}" --identifier africa.venusone.StageOne.stage "$APP/Contents/Helpers/stage"
-codesign "${sign_flags[@]}" "$APP"
+codesign "${sign_flags[@]}" --entitlements Resources/StageOne.entitlements "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
 echo "Built $APP ($VERSION, build $BUILD)"
 
