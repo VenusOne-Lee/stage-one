@@ -7,6 +7,8 @@ import StageOneCore
 enum SceneOptionsService {
     /// Meeting mode arrives with SO-110; it registers here.
     static var setMeetingMode: ((Bool) -> Void)?
+    /// Whether Meeting mode is on; SO-110 keeps it current.
+    static var meetingModeOn = false
 
     /// Shortcuts the user can add so scenes can switch Do Not Disturb (macOS has no API for Focus).
     static let dndOnShortcut = "Stage One: Do Not Disturb On"
