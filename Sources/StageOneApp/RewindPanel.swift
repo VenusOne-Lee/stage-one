@@ -67,6 +67,13 @@ struct RewindView: View {
                 Note(text: "The first snapshots appear over the next 15 minutes.")
             }
             if !isNow { SinceThen(diff: SnapshotDiff.between(then: scene, now: now)) }
+            // SO-062: bring back one window that existed then.
+            Text("Bring back one thing").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.ink3)
+            if isNow {
+                Text("Drag the slider left to compare.").font(.system(size: 12)).foregroundStyle(Theme.ink3)
+            } else {
+                BringBackList(gone: SnapshotDiff.between(then: scene, now: now).gone, scene: scene)
+            }
             Spacer(minLength: 0)
         }
         .frame(minHeight: 520, alignment: .top)
@@ -96,6 +103,54 @@ struct RewindView: View {
 
     private func short(_ d: Date) -> String {
         Calendar.current.isDateInToday(d) ? d.formatted(date: .omitted, time: .shortened) : d.formatted(.dateTime.weekday(.abbreviated))
+    }
+}
+
+/// SO-062: windows that existed then but are gone now, each with "Bring back".
+struct BringBackList: View {
+    let gone: [SnapshotDiff.Gone]
+    let scene: StageScene
+    @State private var asked: Set<String> = []
+
+    var body: some View {
+        if gone.isEmpty {
+            Text("Nothing missing from now.").font(.system(size: 12)).foregroundStyle(Theme.ink3)
+        } else {
+            ScrollView {
+                VStack(spacing: 6) {
+                    ForEach(Array(gone.enumerated()), id: \.offset) { _, g in
+                        let key = g.window.bundleId + g.window.title
+                        HStack(spacing: 10) {
+                            icon(g.window.bundleId)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(g.window.title.isEmpty ? (g.window.appName ?? g.window.bundleId) : g.window.title)
+                                    .font(.system(size: 12.5, weight: .semibold)).foregroundStyle(Theme.ink).lineLimit(1)
+                                Text("was in \(g.group)").font(.system(size: 11)).foregroundStyle(Theme.ink3)
+                            }
+                            Spacer()
+                            Button(asked.contains(key) ? "Opening…" : "Bring back") {
+                                asked.insert(key)
+                                SceneRelaunch.bringBack(g, from: scene)
+                            }
+                            .buttonStyle(StageButtonStyle(kind: .ghost))
+                            .disabled(asked.contains(key))
+                        }
+                        .padding(8)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.7)))
+                    }
+                }
+            }
+            .frame(maxHeight: 180)
+        }
+    }
+
+    @ViewBuilder
+    private func icon(_ bundleID: String) -> some View {
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+            Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 24, height: 24)
+        } else {
+            RoundedRectangle(cornerRadius: 6).fill(Theme.spotSoft).frame(width: 24, height: 24)
+        }
     }
 }
 
