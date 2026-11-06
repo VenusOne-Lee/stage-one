@@ -32,6 +32,26 @@ public struct PrivateList: Codable, Sendable, Equatable {
     public static let defaultApps = ["com.apple.mail", "com.apple.MobileSMS", "com.tinyspeck.slackmacgap",
                                      "net.whatsapp.WhatsApp", "desktop.WhatsApp"]
 
+    /// SO-111: adds an app once.
+    public mutating func addApp(_ bundleID: String) {
+        guard !bundleID.isEmpty, !apps.contains(bundleID) else { return }
+        apps.append(bundleID)
+    }
+
+    public mutating func removeApp(_ bundleID: String) { apps.removeAll { $0 == bundleID } }
+
+    /// SO-111: adds a title rule once; blank patterns are ignored. Returns false when nothing was added.
+    @discardableResult
+    public mutating func addTitle(_ pattern: String, bundleID: String? = nil) -> Bool {
+        let p = pattern.trimmingCharacters(in: .whitespaces)
+        let rule = TitleRule(bundleID: bundleID?.isEmpty == true ? nil : bundleID, pattern: p)
+        guard !p.isEmpty, !titles.contains(rule) else { return false }
+        titles.append(rule)
+        return true
+    }
+
+    public mutating func removeTitle(_ rule: TitleRule) { titles.removeAll { $0 == rule } }
+
     public func isPrivate(bundleID: String, title: String) -> Bool {
         apps.contains(bundleID) || titles.contains { $0.matches(bundleID: bundleID, title: title) }
     }

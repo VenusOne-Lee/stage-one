@@ -566,7 +566,7 @@ private struct PrivacyPane: View {
                     Toggle("", isOn: $prefs.meetingAuto).labelsHidden().toggleStyle(.switch).tint(Theme.spot)
                 }
                 Divider().opacity(0.5)
-                PrivateAppsList(prefs: prefs)
+                PrivateWindowsCard(prefs: prefs)
             }
             StageCard {
                 PrivacyLine(title: "No analytics", text: "Stage One collects nothing and sends nothing. There is no tracking and no account.")
@@ -587,24 +587,6 @@ private struct PrivacyPane: View {
                         Permissions.openScreenRecordingSettings()
                     }
                 }
-            }
-        }
-    }
-}
-
-/// The apps Meeting mode hides.
-private struct PrivateAppsList: View {
-    @ObservedObject var prefs: Preferences
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Private apps").font(.system(size: 13.5, weight: .semibold))
-            let apps = prefs.privateList.apps
-            if apps.isEmpty {
-                Text("None").font(.system(size: 12.5)).foregroundStyle(Theme.ink3)
-            } else {
-                Text(apps.map { MeetingMode.appName($0) ?? $0 }.joined(separator: ", "))
-                    .font(.system(size: 12.5)).foregroundStyle(Theme.ink2).fixedSize(horizontal: false, vertical: true)
             }
         }
     }

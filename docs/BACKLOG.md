@@ -309,7 +309,7 @@ Acceptance:
 - [x] The strip hides their thumbnails.
 ### SO-111 · Private window picker · P2 · S
 Acceptance:
-- [ ] Mark an app, or a single window by title pattern, as private.
+- [x] Mark an app, or a single window by title pattern, as private.
 
 ### E13 Share and automate
 ### SO-120 · Export and import scenes · P2 · S
