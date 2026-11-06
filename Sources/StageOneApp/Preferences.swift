@@ -37,6 +37,8 @@ final class Preferences: ObservableObject {
     }
     /// SO-110: turn Meeting mode on while the screen is shared.
     @Published var meetingAuto: Bool { didSet { d.set(meetingAuto, forKey: "meetingAuto") } }
+    /// SO-121: MCP tools allowed to change the desk without asking.
+    @Published var mcpAllowed: [String] { didSet { d.set(mcpAllowed, forKey: "mcpAllowed") } }
     /// The desk differs from the current scene (shown as "· edited"). Not persisted.
     @Published var sceneEdited = false
     /// Persisted desk (groups), so groups survive a relaunch.
@@ -70,6 +72,7 @@ final class Preferences: ObservableObject {
         appExceptions = d.data(forKey: "appExceptions").flatMap { try? JSONDecoder().decode([AppException].self, from: $0) } ?? []
         privateList = d.data(forKey: "privateList").flatMap { try? JSONDecoder().decode(PrivateList.self, from: $0) } ?? PrivateList()
         meetingAuto = d.object(forKey: "meetingAuto") as? Bool ?? true
+        mcpAllowed = d.stringArray(forKey: "mcpAllowed") ?? []
         spacesMode = SpacesMode(rawValue: d.string(forKey: "spacesMode") ?? "") ?? .shared
     }
 }

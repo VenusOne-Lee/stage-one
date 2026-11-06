@@ -79,6 +79,16 @@ enum CommandRouter {
         case .pause(let on):
             setPaused(on)
             return CommandReply(ok: true, message: on ? "Paused. Windows are back where macOS put them." : "Resumed.")
+
+        case .rewindPoints:
+            let r = RewindStore.shared
+            r.reload()
+            let points = r.snapshots.map(\.date)
+            return CommandReply(ok: true, message: "\(points.count) rewind point\(points.count == 1 ? "" : "s")", points: points)
+
+        case .ask:
+            // Confirmation happens in CommandServer, off the main thread; nothing else sends this.
+            return .fail("This request needs confirmation in Stage One.")
         }
     }
 

@@ -11,6 +11,10 @@ test -d "$APP/Contents/Frameworks/Sparkle.framework"
 LINKS="$(otool -L "$APP/Contents/MacOS/StageOne")"
 grep -q "@rpath/Sparkle.framework" <<< "$LINKS"
 "$APP/Contents/Helpers/stage" --help >/dev/null
+# SO-121: the MCP server answers initialize and lists its tools without the app running.
+MCP_OUT="$(printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' '{"jsonrpc":"2.0","method":"notifications/initialized"}' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | "$APP/Contents/Helpers/stage" mcp)"
+grep -q '"protocolVersion"' <<< "$MCP_OUT"
+grep -q '"rewind_points"' <<< "$MCP_OUT"
 
 # SO-131: the watchdog returns at once for a dead pid and removes an empty parked file.
 WD="$(mktemp -d)"

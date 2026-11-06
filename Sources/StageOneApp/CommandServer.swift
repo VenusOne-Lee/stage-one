@@ -56,6 +56,38 @@ final class CommandServer: @unchecked Sendable {
         }
     }
 
+    /// SO-121: asks in a toast before an MCP tool changes the desk, unless the user allowed
+    /// that tool for good. Waits here, off the main thread, for up to 20 seconds.
+    private static func confirmThenRun(tool: String, _ command: Command) -> CommandReply {
+        let allowed = DispatchQueue.main.sync { MainActor.assumeIsolated { Preferences.shared.mcpAllowed.contains(tool) } }
+        if !allowed {
+            let answer = Answer()
+            DispatchQueue.main.sync { MainActor.assumeIsolated { MCPConfirm.ask(tool: tool, command, answer: answer) } }
+            guard answer.wait(seconds: 20) else {
+                return .fail("Not allowed: nobody pressed Allow in Stage One. The user can allow \(tool) for good in Stage One › Settings › Integrations.")
+            }
+        }
+        return DispatchQueue.main.sync { MainActor.assumeIsolated { CommandRouter.run(command) } }
+    }
+
+    /// One yes/no answer, given on the main thread and awaited on the socket thread.
+    final class Answer: @unchecked Sendable {
+        private let sem = DispatchSemaphore(value: 0)
+        private let lock = NSLock()
+        private var yes = false
+
+        func allow() {
+            lock.lock(); yes = true; lock.unlock()
+            sem.signal()
+        }
+
+        func wait(seconds: Double) -> Bool {
+            _ = sem.wait(timeout: .now() + seconds)
+            lock.lock(); defer { lock.unlock() }
+            return yes
+        }
+    }
+
     private func serve(_ client: Int32) {
         defer { close(client) }
         var one: Int32 = 1
@@ -75,7 +107,11 @@ final class CommandServer: @unchecked Sendable {
 
         let reply: CommandReply
         if let command = try? IPC.decode(Command.self, Data(data)) {
-            reply = DispatchQueue.main.sync { MainActor.assumeIsolated { CommandRouter.run(command) } }
+            if case .ask(let tool, let inner) = command {
+                reply = Self.confirmThenRun(tool: tool, inner)
+            } else {
+                reply = DispatchQueue.main.sync { MainActor.assumeIsolated { CommandRouter.run(command) } }
+            }
         } else {
             reply = .fail("Stage One couldn't read that request. Is the CLI the same version as the app?")
         }

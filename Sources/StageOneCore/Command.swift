@@ -16,6 +16,10 @@ public enum Command: Codable, Sendable, Equatable {
     case importScene(path: String)
     case status
     case pause(Bool)
+    /// SO-121: the snapshots Rewind can go back to.
+    case rewindPoints
+    /// SO-121: run `command` once the user allows `tool` in Stage One (or has allowed it for good).
+    indirect case ask(tool: String, command: Command)
 
     /// Parses `stageone://<verb>?k=v` URLs (SO-101).
     public init?(url: URL) {
@@ -57,9 +61,12 @@ public struct CommandReply: Codable, Sendable {
     public var scenes: [SceneSummary]?
     public var groups: [GroupSummary]?
     public var layouts: [String]?
+    /// SO-121: rewind points, oldest first.
+    public var points: [Date]?
 
-    public init(ok: Bool, message: String, scenes: [SceneSummary]? = nil, groups: [GroupSummary]? = nil, layouts: [String]? = nil) {
-        self.ok = ok; self.message = message; self.scenes = scenes; self.groups = groups; self.layouts = layouts
+    public init(ok: Bool, message: String, scenes: [SceneSummary]? = nil, groups: [GroupSummary]? = nil, layouts: [String]? = nil,
+                points: [Date]? = nil) {
+        self.ok = ok; self.message = message; self.scenes = scenes; self.groups = groups; self.layouts = layouts; self.points = points
     }
 
     public static func fail(_ m: String) -> CommandReply { CommandReply(ok: false, message: m) }
