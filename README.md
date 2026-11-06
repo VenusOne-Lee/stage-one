@@ -19,6 +19,8 @@ Builds that aren't notarised by Apple (every CI build, and releases made without
 
 Or in Terminal: `xattr -dr com.apple.quarantine "/Applications/Stage One.app"`, then open it as usual. macOS remembers the choice, and updates install without asking again.
 
+**After installing a new build**, an ad-hoc signed app no longer matches the Accessibility and Screen Recording permissions you gave the old one, even though the switches still look on. The strip then says "Stage One can't see your windows" and previews stay blank. In **Privacy & Security › Accessibility** (and **Screen Recording**), select Stage One, remove it with **−**, add it again with **+**, and reopen Stage One. Notarised releases with a Developer ID keep their permissions across updates.
+
 ## Meeting mode
 
 ⌃⌥M, the menu bar or the command bar turns it on, and by default it turns itself on while you share your screen (macOS Screen Sharing, Zoom, Teams, Meet in the browser). Windows of private apps (Mail, Messages, Slack and WhatsApp to start with; change them in Settings › Privacy) get a frosted cover reading "Hidden while you share", and the strip hides their previews. A scene can turn it on too.

@@ -56,6 +56,10 @@ public final class WindowInventory: ObservableObject {
     @Published public private(set) var fullscreen: [CGWindowID: TrackedWindow] = [:]
     /// Every app window that exists on any Space (from CGWindowList), managed or not.
     public private(set) var aliveIDs: Set<CGWindowID> = []
+    /// True when macOS refuses Stage One's Accessibility calls although it reports access as
+    /// granted. Happens when an update replaced the app: the old permission no longer matches,
+    /// and the user has to remove Stage One from the Accessibility list and add it again.
+    @Published public private(set) var accessBroken = false
 
     /// Called for every window event after the inventory has been updated.
     public var onEvent: ((WindowEvent) -> Void)?
@@ -171,15 +175,22 @@ public final class WindowInventory: ObservableObject {
     /// The periodic safety net: skips all Accessibility work when CGWindowList is unchanged.
     /// Titles and focus still update through AX notifications.
     public func safetyRescan() {
-        guard AXIsProcessTrusted(), let info = Self.windowList() else { return }
+        guard trusted(), let info = Self.windowList() else { return }
         if let last = lastSignature, last == Self.signature(of: info) { return }
         rescan(using: info)
     }
 
     /// Full rescan. Keeps existing TrackedWindow objects so identities stay stable.
     public func rescan() {
-        guard AXIsProcessTrusted(), let info = Self.windowList() else { return }
+        guard trusted(), let info = Self.windowList() else { return }
         rescan(using: info)
+    }
+
+    /// Access taken away while running (switched off in Settings) also counts as broken.
+    private func trusted() -> Bool {
+        let ok = AXIsProcessTrusted()
+        if !ok, !accessBroken { accessBroken = true; onChange?() }
+        return ok
     }
 
     private func rescan(using info: [[String: Any]]) {
@@ -208,13 +219,16 @@ public final class WindowInventory: ObservableObject {
         var found: [CGWindowID: TrackedWindow] = [:]
         // Full screen windows stay known while they exist, even when AX can't see their Space.
         var full = fullscreen.filter { alive.contains($0.key) }
+        var refused = 0, answered = 0
         for pid in pids {
             guard let app = NSRunningApplication(processIdentifier: pid), app.activationPolicy == .regular,
                   let bundle = app.bundleIdentifier, !ignoredBundleIDs.contains(bundle),
                   !floatingBundleIDs.contains(bundle) else { continue }
             if observers[pid] == nil { observe(pid: pid) }
             let axApp = AXUIElementCreateApplication(pid)
-            for el in AX.windows(of: axApp) {
+            let (axWindows, axError) = AX.windowsChecked(of: axApp)
+            if axError == .apiDisabled { refused += 1 } else if axError == .success { answered += 1 }
+            for el in axWindows {
                 guard let id = AX.windowID(of: el), AX.isStandardWindow(el), !AX.isMinimized(el),
                       let frame = AX.frame(el), frame.width >= 40, frame.height >= 40 else { continue }
                 let title = AX.string(el, kAXTitleAttribute) ?? ""
@@ -245,6 +259,8 @@ public final class WindowInventory: ObservableObject {
         byID = found
         windows = sorted
         aliveIDs = alive
+        let broken = refused > 0 && answered == 0
+        if broken != accessBroken { accessBroken = broken }
         if Set(full.keys) != Set(fullscreen.keys) { fullscreen = full } else { for (k, v) in full { fullscreen[k]?.snapshot = v.snapshot } }
         onChange?()
     }

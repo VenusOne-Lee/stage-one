@@ -15,7 +15,8 @@ final class StripPanel: NSPanel {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = false
-        collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
+        // No .fullScreenAuxiliary: like Stage Manager, the strip stays out of full screen apps.
+        collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         isMovable = false
         let host = NSHostingView(rootView: rootView)
         host.sizingOptions = []

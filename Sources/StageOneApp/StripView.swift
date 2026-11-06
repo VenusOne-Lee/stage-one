@@ -17,7 +17,10 @@ struct StripView: View {
         let vertical = model.edge.isVertical
         // SO-024: any number of groups; the strip scrolls past the visible slots.
         Group {
-            if vertical {
+            if controller.inventory.accessBroken {
+                // Without working Accessibility the groups would all read "Empty"; say why instead.
+                AccessCard().padding(12)
+            } else if vertical {
                 VStack(spacing: 8) {
                     if searching { StripSearchField(text: $model.query).padding(.horizontal, 12).padding(.top, 8) }
                     ScrollView(.vertical, showsIndicators: false) {
@@ -67,6 +70,29 @@ struct StripView: View {
             .transition(.scale(scale: 0.8).combined(with: .opacity))
         }
         NewGroupSlot(model: model)
+    }
+}
+
+/// Shown in place of the groups when macOS refuses Accessibility calls (usually right after
+/// an update replaced the app, so the old permission no longer matches).
+struct AccessCard: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Stage One can't see your windows")
+                .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
+            Text("macOS stopped honouring Stage One's Accessibility permission, which happens after an update. In Privacy & Security › Accessibility, select Stage One, remove it with −, then add it again with +.")
+                .font(.system(size: 11.5)).foregroundStyle(Theme.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Open Accessibility") {
+                Permissions.requestAccessibility()
+                Permissions.openAccessibilitySettings()
+            }
+            .buttonStyle(StageButtonStyle(kind: .spot))
+        }
+        .padding(12)
+        .frame(maxWidth: 200, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.glass))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.line))
     }
 }
 

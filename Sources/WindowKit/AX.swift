@@ -27,7 +27,15 @@ public enum AX {
     }
 
     public static func windows(of app: AXUIElement) -> [AXUIElement] {
-        attribute(app, kAXWindowsAttribute, as: [AXUIElement].self) ?? []
+        windowsChecked(of: app).windows
+    }
+
+    /// The app's windows, and the Accessibility error when the call failed. `.apiDisabled`
+    /// means macOS isn't letting Stage One use Accessibility, even if the setting looks on.
+    public static func windowsChecked(of app: AXUIElement) -> (windows: [AXUIElement], error: AXError) {
+        var value: CFTypeRef?
+        let err = AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &value)
+        return ((value as? [AXUIElement]) ?? [], err)
     }
 
     public static func point(_ element: AXUIElement, _ name: String) -> CGPoint? {
