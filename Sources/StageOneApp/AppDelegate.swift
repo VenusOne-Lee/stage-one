@@ -25,6 +25,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if !Permissions.accessibility { Engine.watchForAccessibility() }
         UpdateChecker.shared.start()
+        SpotlightIndex.shared.install()
+    }
+
+    /// SO-091: a scene picked in Spotlight.
+    func application(_ application: NSApplication, continue userActivity: NSUserActivity,
+                     restorationHandler: @escaping ([any NSUserActivityRestoring]) -> Void) -> Bool {
+        SpotlightIndex.shared.open(userActivity)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
