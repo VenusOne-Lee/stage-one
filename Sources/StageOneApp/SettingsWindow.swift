@@ -524,7 +524,7 @@ private struct RulesPane: View {
             Text("Rules restore a scene when a monitor connects, a Focus starts, a calendar event begins, an app opens or you join a Wi-Fi network.")
                 .font(.system(size: 13.5))
                 .fixedSize(horizontal: false, vertical: true)
-            Note(text: "Coming soon. Rules will be managed here and from the Rules panel.")
+            Note(text: "Pick “Restore when…” as you save a scene. Turn rules on and off, and see the last 50 runs, in the Rules panel.")
             Button("Open Rules") { Panels.shared.show(.rules) }
                 .buttonStyle(StageButtonStyle(kind: .ghost))
         }
