@@ -1,4 +1,5 @@
 import AppKit
+import StageOneCore
 import WindowKit
 
 /// SO-004: the orange ring in the menu bar and its menu. The menu is rebuilt each
@@ -41,6 +42,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(item("Rewind", #selector(rewind)))
         menu.addItem(item("View", #selector(showView)))
         menu.addItem(item("Rules", #selector(rules)))
+        menu.addItem(item("Command bar  \(LayoutShortcut.commandBar.shortcut(in: prefs.layoutShortcuts).display)", #selector(commandBar)))
         menu.addItem(.separator())
 
         menu.addItem(item("Settings…", #selector(settings), key: ","))
@@ -86,6 +88,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func rewind() { Panels.shared.show(.rewind) }
     @objc private func showView() { Panels.shared.show(.view) }
     @objc private func rules() { Panels.shared.show(.rules) }
+    @objc private func commandBar() { Panels.shared.show(.commandBar) }
 
     @objc private func settings() { MenuBarController.openSettings() }
 
