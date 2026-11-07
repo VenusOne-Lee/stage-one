@@ -577,8 +577,7 @@ private struct PrivacyPane: View {
                 StageCard {
                     PermissionRow(title: "Accessibility", detail: "Needed to move, resize and hide windows.",
                                   granted: Permissions.accessibility) {
-                        Permissions.requestAccessibility()
-                        Permissions.openAccessibilitySettings()
+                        AccessibilityGuide.shared.show()
                     }
                     Divider().opacity(0.5)
                     PermissionRow(title: "Screen Recording", detail: "Optional. Used only for live previews in the strip.",

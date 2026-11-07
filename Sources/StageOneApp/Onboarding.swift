@@ -62,7 +62,17 @@ final class OnboardingModel: ObservableObject {
 
     func refresh() {
         let ax = Permissions.accessibility
-        if ax != accessibility { accessibility = ax }
+        if ax != accessibility {
+            accessibility = ax
+            // SO-136: move on by itself once access arrives, after a beat to show "Allowed".
+            if ax && step == .accessibility {
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: .milliseconds(700))
+                    guard let self, self.step == .accessibility else { return }
+                    self.next()
+                }
+            }
+        }
         if ax { Engine.startIfReady() }
         let sr = Permissions.screenRecording
         if sr != screenRecording {
@@ -72,6 +82,14 @@ final class OnboardingModel: ObservableObject {
         if step == .stageManager {
             let on = AppleStageManager.isOn
             if on != stageManagerOn { stageManagerOn = on }
+        }
+    }
+
+    /// SO-136: opens Settings with the drag tile beside it, and comes back here once allowed.
+    func allowAccessibility() {
+        AccessibilityGuide.shared.show { [weak self] in
+            self?.refresh()
+            OnboardingWindow.shared.bringToFront()
         }
     }
 
@@ -152,6 +170,12 @@ final class OnboardingWindow: NSObject, NSWindowDelegate {
         window?.close()
     }
 
+    func bringToFront() {
+        guard let window, window.isVisible else { return }
+        NSApp.activate()
+        window.makeKeyAndOrderFront(nil)
+    }
+
     func windowWillClose(_ notification: Notification) {
         model?.stopPolling()
         model = nil
@@ -171,7 +195,7 @@ struct OnboardingView: View {
             Group {
                 switch model.step {
                 case .welcome: WelcomeStep()
-                case .accessibility: AccessibilityStep(granted: model.accessibility)
+                case .accessibility: AccessibilityStep(granted: model.accessibility) { model.allowAccessibility() }
                 case .screenRecording: ScreenRecordingStep(granted: model.screenRecording)
                 case .stageManager: StageManagerStep(model: model)
                 case .importWindows: ImportStep(model: model)
@@ -299,6 +323,7 @@ private struct Bullet: View {
 
 private struct AccessibilityStep: View {
     let granted: Bool
+    let allow: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -312,16 +337,13 @@ private struct AccessibilityStep: View {
                 }
                 Text(granted
                      ? "All set. Stage One can arrange your windows now."
-                     : "Open System Settings, then turn on Stage One under Privacy & Security › Accessibility. This page updates on its own.")
+                     : "Click Allow, then drag the Stage One tile that appears beside System Settings into the list. This page moves on by itself.")
                     .font(.system(size: 12.5))
                     .foregroundStyle(Theme.ink2)
                     .fixedSize(horizontal: false, vertical: true)
                 if !granted {
-                    Button("Open System Settings") {
-                        Permissions.requestAccessibility()
-                        Permissions.openAccessibilitySettings()
-                    }
-                    .buttonStyle(StageButtonStyle(kind: .ink))
+                    Button("Allow Accessibility", action: allow)
+                        .buttonStyle(StageButtonStyle(kind: .ink))
                 }
             }
             Text("Stage One only reads window positions, sizes and titles. Titles stay on your Mac.")

@@ -90,6 +90,13 @@ Acceptance:
 - [ ] A 3-step sheet covers what Stage One does, Accessibility access and Screen Recording access. Each step has a deep link to the right System Settings pane.
 - [ ] Each permission shows a live granted state and updates without a relaunch.
 - [ ] The app works without Screen Recording, using app icon tiles instead of previews.
+### SO-136 · One-drag Accessibility setup · P0 · S
+Why: finding Stage One in a long Accessibility list and flipping its switch is the clunkiest moment of setup. Apps like Codex float a tile beside System Settings that you drag straight into the list.
+Acceptance:
+- [x] "Allow Accessibility" opens Privacy & Security › Accessibility and floats a Stage One tile beside the Settings window, with an arrow pointing at it. It follows the window, moves to the left or inside when there is no room, and goes away when Settings closes.
+- [x] Dragging the tile into the list adds Stage One with its switch on. The tile explains what to do when Stage One is already listed or its old entry stopped working.
+- [x] As soon as access is granted the tile shows "Allowed", disappears, and the walkthrough comes back to the front and moves to the next step by itself.
+- [x] Settings › Privacy and the "can't see your windows" strip card use the same tile.
 ### SO-002 · Turn off Apple's Stage Manager · P0 · S
 Acceptance:
 - [ ] Detect whether Stage Manager is on (`defaults read com.apple.WindowManager GloballyEnabled`).
