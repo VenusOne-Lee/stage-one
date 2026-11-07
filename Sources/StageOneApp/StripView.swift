@@ -80,13 +80,10 @@ struct AccessCard: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Stage One can't see your windows")
                 .font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
-            Text("macOS stopped honouring Stage One's Accessibility permission, which happens after an update. In Privacy & Security › Accessibility, select Stage One, remove it with −, then add it again with +.")
+            Text("macOS stopped honouring Stage One's Accessibility permission, which happens after an update. In Privacy & Security › Accessibility, select Stage One, remove it with −, then drag it back in with the tile that appears.")
                 .font(.system(size: 11.5)).foregroundStyle(Theme.ink2)
                 .fixedSize(horizontal: false, vertical: true)
-            Button("Open Accessibility") {
-                Permissions.requestAccessibility()
-                Permissions.openAccessibilitySettings()
-            }
+            Button("Open Accessibility") { AccessibilityGuide.shared.show() }
             .buttonStyle(StageButtonStyle(kind: .spot))
         }
         .padding(12)
